@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_MONK_MODEL,
   MONK_BASE_URL,
@@ -12,7 +13,6 @@ import {
   getPiModelsFile,
   getPiMonkExtensionFile,
 } from "./constants";
-import { MONK_EXTENSION_CODE } from "./extension/code";
 
 export interface MonkLocalConfig {
   apiKey?: string;
@@ -145,6 +145,39 @@ export function syncPiModelsJson(apiKey?: string): { success: boolean; path: str
 }
 
 /**
+ * Resolves the raw source code of monk-extension.ts cleanly from dist or src
+ */
+export function getMonkExtensionRaw(): string {
+  try {
+    // 1. Check relative to current bundle (dist/monk-extension.ts)
+    const distPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "monk-extension.ts"
+    );
+    if (fs.existsSync(distPath)) {
+      return fs.readFileSync(distPath, "utf-8");
+    }
+
+    // 2. Check source file in src/extension/
+    const srcPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../src/extension/monk-extension.ts"
+    );
+    if (fs.existsSync(srcPath)) {
+      return fs.readFileSync(srcPath, "utf-8");
+    }
+
+    // 3. Fallback cwd
+    const cwdPath = path.resolve(process.cwd(), "src/extension/monk-extension.ts");
+    if (fs.existsSync(cwdPath)) {
+      return fs.readFileSync(cwdPath, "utf-8");
+    }
+  } catch {}
+
+  return "";
+}
+
+/**
  * Safely writes or updates the Monk native extension in ~/.pi/agent/extensions/monk.ts
  */
 export function syncPiExtension(force: boolean = false): {
@@ -161,7 +194,16 @@ export function syncPiExtension(force: boolean = false): {
       fs.mkdirSync(extDir, { recursive: true });
     }
 
-    const targetContent = MONK_EXTENSION_CODE.trim() + "\n";
+    const targetContent = getMonkExtensionRaw().trim() + "\n";
+    if (!targetContent.trim()) {
+      return {
+        success: false,
+        path: extFile,
+        updated: false,
+        error: "未找到扩展源文件 monk-extension.ts",
+      };
+    }
+
     if (fs.existsSync(extFile)) {
       const existing = fs.readFileSync(extFile, "utf-8");
       if (existing === targetContent && !force) {

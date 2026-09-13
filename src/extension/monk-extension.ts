@@ -655,7 +655,7 @@ async function handleUndoCommand(
   } else {
     ctx.ui?.notify(
       `已成功撤销改动！共恢复 ${restoredCount} 个文件，清理 ${deletedCount} 个新建文件`,
-      "success"
+      "info"
     );
   }
 }

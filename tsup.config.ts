@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import fs from "node:fs";
 
 export default defineConfig({
   entry: {
@@ -9,4 +10,7 @@ export default defineConfig({
   target: "node18",
   clean: true,
   dts: true,
+  onSuccess: async () => {
+    fs.copyFileSync("src/extension/monk-extension.ts", "dist/monk-extension.ts");
+  },
 });
