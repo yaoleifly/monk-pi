@@ -180,6 +180,22 @@ export default function monkExtension(pi) {
       if (undoStack.length > 10) {
         undoStack.shift();
       }
+
+      if (ctx.ui) {
+        const count = currentTurnBackups.size;
+        if (count === 1) {
+          const firstFile = Array.from(currentTurnBackups.values())[0];
+          ctx.ui.notify(
+            \`已修改 \${firstFile.relativePath} · 如需撤销可随时输入 /undo 一键还原\`,
+            "info"
+          );
+        } else {
+          ctx.ui.notify(
+            \`已修改 \${count} 个文件 · 如需撤销可随时输入 /undo 一键还原\`,
+            "info"
+          );
+        }
+      }
     }
     currentTurnBackups = new Map();
     updateStatus(ctx);

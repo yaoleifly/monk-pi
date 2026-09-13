@@ -202,6 +202,23 @@ export default function monkExtension(pi: ExtensionAPI) {
       if (undoStack.length > 10) {
         undoStack.shift();
       }
+
+      // Contextual safety nudge: remind user /undo is available
+      if (ctx.ui) {
+        const count = currentTurnBackups.size;
+        if (count === 1) {
+          const [firstFile] = currentTurnBackups.values();
+          ctx.ui.notify(
+            `已修改 ${firstFile.relativePath} · 如需撤销可随时输入 /undo 一键还原`,
+            "info"
+          );
+        } else {
+          ctx.ui.notify(
+            `已修改 ${count} 个文件 · 如需撤销可随时输入 /undo 一键还原`,
+            "info"
+          );
+        }
+      }
     }
     currentTurnBackups = new Map<string, FileBackup>();
     updateStatus(ctx);
