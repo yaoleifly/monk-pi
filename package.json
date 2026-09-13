@@ -1,0 +1,47 @@
+{
+  "name": "monk-pi",
+  "version": "0.1.0",
+  "description": "Zero-config harness for running Pi Coding Agent with Monk API (monk.party)",
+  "type": "module",
+  "bin": {
+    "monk-pi": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node ./dist/cli.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "monk",
+    "pi",
+    "coding-agent",
+    "llm",
+    "ai",
+    "harness",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.7.2",
+    "commander": "^15.0.0",
+    "cross-spawn": "^7.0.6",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/node": "^26.5.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
