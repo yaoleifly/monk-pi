@@ -8,7 +8,7 @@ import { modelCommand } from "./commands/model";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
 import { statusCommand } from "./commands/status";
-import { MONK_ACCOUNT_URL, MONK_WEBSITE } from "./constants";
+import { MONK_ACCOUNT_URL, MONK_PI_VERSION, MONK_WEBSITE } from "./constants";
 import { printBanner } from "./ui";
 
 const rawArgs = process.argv.slice(2);
@@ -33,7 +33,7 @@ async function main() {
     program
       .name("monk-pi")
       .description("Monk × Pi: 极速高性价比 Coding Agent Harness")
-      .version("0.1.0");
+      .version(MONK_PI_VERSION);
 
     program
       .command("login")
@@ -131,7 +131,7 @@ async function main() {
 
   // Handle version
   if (firstArg === "--version" || firstArg === "-v") {
-    console.log("monk-pi v0.1.0");
+    console.log(`monk-pi v${MONK_PI_VERSION}`);
     return;
   }
 
