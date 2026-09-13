@@ -31,7 +31,10 @@ npm install -g monk-pi
 monk-pi
 ```
 
-首次运行会自动弹出向导，提示输入您的 Monk API Key（可在 [monk.party](https://monk.party) 订阅获取），随后即刻进入极速编码终端。
+首次运行会自动弹出智能向导：
+- **已有 Key**：直接粘贴即可瞬间完成校验并保存。
+- **尚未订阅**：支持**一键回车自动唤起浏览器**打开 [monk.party](https://monk.party) 订阅月卡，网页生成 Key 后直接无缝切回终端粘贴！
+- 随后即刻进入极速编码交互终端。
 
 ---
 
