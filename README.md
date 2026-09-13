@@ -47,7 +47,10 @@ monk-pi
 monk-pi "重构当前目录下的鉴权模块，补充单元测试"
 
 # 恢复上一轮历史会话
-monk-pi --continue
+monk-pi --continue (或 monk-pi continue)
+
+# 可视化浏览并挑选以往历史任务恢复
+monk-pi -r (或 monk-pi resume)
 ```
 
 ### 2. 命令行单次执行 (Print Mode)
@@ -77,6 +80,7 @@ monk-pi --model monk "帮我设计一套分布式系统的架构方案"
 ### 终端 CLI 指令
 | 命令 | 说明 |
 | :--- | :--- |
+| `monk-pi resume` (或 `-r`) | 可视化交互式浏览历史会话列表，带相对时间和摘要快速恢复 (断点续写) |
 | `monk-pi login` (或 `auth`) | 交互式配置或更新 Monk API Key，并自动同步至 Pi |
 | `monk-pi status` (或 `check`) | 检测 API 网络延迟、认证有效性及推演通道 |
 | `monk-pi model [name]` | 查看或切换默认主力模型 (`monk-coding` / `monk-fast` / `monk`) |

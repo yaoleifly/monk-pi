@@ -80,9 +80,13 @@ async function main() {
     console.log(`    ${pc.cyan('monk-pi --model monk-fast "快速审查这个提交"')}`);
     console.log();
     console.log(`    ${pc.dim("# 恢复上一轮历史会话")}`);
-    console.log(`    ${pc.cyan("monk-pi --continue")}`);
+    console.log(`    ${pc.cyan("monk-pi --continue (或 monk-pi continue)")}`);
+    console.log();
+    console.log(`    ${pc.dim("# 可视化浏览并恢复以往历史任务")}`);
+    console.log(`    ${pc.cyan("monk-pi -r (或 monk-pi resume)")}`);
     console.log();
     console.log(`  ${pc.bold("专属管理指令:")}`);
+    console.log(`    ${pc.yellow("monk-pi resume (或 -r)")}        可视化浏览并恢复历史会话 (断点续写)`);
     console.log(`    ${pc.yellow("monk-pi login")}                 配置 / 更新 Monk API Key`);
     console.log(`    ${pc.yellow("monk-pi status")}                检测 API 延迟、Key 状态与连通性`);
     console.log(`    ${pc.yellow("monk-pi model [name]")}          查看或切换默认主力模型`);
