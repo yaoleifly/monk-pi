@@ -1,4 +1,6 @@
+import pc from "picocolors";
 import { getDefaultModel, resolveApiKey, syncPiExtension, syncPiModelsJson } from "../config";
+import { PRO_TIPS } from "../extension/monk-extension";
 import { detectPi, installPi, launchPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, promptInstallPi } from "../ui";
 import { loginCommand } from "./login";
@@ -43,6 +45,13 @@ export async function runCommand(passthroughArgs: string[]): Promise<number> {
 
   // 4. Resolve default model
   const defaultModel = getDefaultModel();
+
+  // Print startup pro-tip for interactive sessions
+  if (!passthroughArgs.includes("-p") && !passthroughArgs.includes("--print")) {
+    const tip = PRO_TIPS[Math.floor(Math.random() * PRO_TIPS.length)];
+    console.log(`  ${pc.yellow("💡 极客小贴士:")} ${pc.dim(tip)}`);
+    console.log();
+  }
 
   // 5. Launch Pi
   return launchPi({

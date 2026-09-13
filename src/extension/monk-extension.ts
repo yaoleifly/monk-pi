@@ -14,6 +14,17 @@ const MONK_MODELS = [
   { id: "monk", label: "monk (融合旗舰 · 质量优先与综合推理)" },
 ];
 
+export const PRO_TIPS = [
+  "在输入框输入 @diff 即可秒级把当前未提交改动带入分析",
+  "输入 /commit 可按 Conventional Commits 规范自动生成中文提交",
+  "AI 改乱了代码不用慌，随时输入 /undo 或 /回退 瞬间一键复原",
+  "输入 /review 可从缺陷、性能、架构四个维度对代码进行深度审查",
+  "输入 /monk 可呼出图形化控制台，秒级免重启切换主力模型",
+  "输入 @recent 快速提取最近变动的项目核心源文件列表",
+  "输入 /monk cn 随时切换中文工程精炼模式（零客套·行动优先）",
+  "终端输入 monk-pi -r 可视化恢复以往任意历史任务断点续写",
+];
+
 const OVERFLOW_PATTERNS = [
   /context.*length/i,
   /maximum.*tokens/i,
@@ -132,6 +143,25 @@ export default function monkExtension(pi: ExtensionAPI) {
     } catch {
       // Ignore if autocomplete provider stacking is not supported
     }
+
+    // Display Startup Smart Navigator Widget (Auto-dismisses on first prompt)
+    if (ctx.ui && typeof ctx.ui.setWidget === "function") {
+      try {
+        const { stack, gitInfo } = await getProjectContext(pi);
+        const randomTip = PRO_TIPS[Math.floor(Math.random() * PRO_TIPS.length)];
+        const theme = ctx.ui.theme;
+
+        const widgetLines = [
+          theme.fg("accent", `⚡ Monk 极客导航 · ${stack} (${gitInfo})`),
+          theme.fg("dim", "  推荐指令: @diff (改动) · /commit (自动提交) · /undo (一键撤销) · /tips"),
+          theme.fg("warning", `  💡 技巧: ${randomTip}`),
+        ];
+
+        ctx.ui.setWidget("monk-starter", widgetLines, { placement: "aboveEditor" });
+      } catch {
+        // Ignore widget errors
+      }
+    }
   });
 
   pi.on("model_select", async (_event, ctx) => {
@@ -141,6 +171,13 @@ export default function monkExtension(pi: ExtensionAPI) {
   pi.on("turn_start", async (event, ctx) => {
     turnCount = event.turnIndex || turnCount + 1;
     currentTurnBackups = new Map<string, FileBackup>();
+
+    // Clear starter widget once conversation starts to keep interface clean
+    if (ctx.ui && typeof ctx.ui.setWidget === "function") {
+      try {
+        ctx.ui.setWidget("monk-starter", undefined);
+      } catch {}
+    }
 
     if (!ctx.ui) return;
     const model = ctx.model;
@@ -290,7 +327,19 @@ export default function monkExtension(pi: ExtensionAPI) {
     }
   });
 
-  // 6. Custom Slash Command: /undo (一键撤销)
+  // 6. Custom Slash Command: /tips (查看技巧清单)
+  pi.registerCommand("tips", {
+    description: "查看 Monk-Pi 极客技巧清单 (/tips)",
+    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      if (!ctx.ui) return;
+      await ctx.ui.select(
+        "Monk-Pi 极客实用技巧清单:",
+        PRO_TIPS.map((t, i) => `${i + 1}. ${t}`)
+      );
+    },
+  });
+
+  // 7. Custom Slash Command: /undo (一键撤销)
   pi.registerCommand("undo", {
     description: "一键撤销上一次 AI 对文件的所有修改 (/undo)",
     handler: async (_args: string, ctx: ExtensionCommandContext) => {
@@ -305,7 +354,7 @@ export default function monkExtension(pi: ExtensionAPI) {
     },
   });
 
-  // 7. Custom Slash Command: /commit (自动中文语义化提交)
+  // 8. Custom Slash Command: /commit (自动中文语义化提交)
   pi.registerCommand("commit", {
     description: "检查 Git 改动并生成语义化中文 Commit 提交 (/commit [附加说明])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
@@ -313,7 +362,7 @@ export default function monkExtension(pi: ExtensionAPI) {
     },
   });
 
-  // 8. Custom Slash Command: /review (深度中文代码审查)
+  // 9. Custom Slash Command: /review (深度中文代码审查)
   pi.registerCommand("review", {
     description: "对当前 Git 改动或指定文件进行专业中文代码审查 (/review [路径/分支])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
@@ -321,14 +370,24 @@ export default function monkExtension(pi: ExtensionAPI) {
     },
   });
 
-  // 9. Custom Slash Command: /monk
+  // 10. Custom Slash Command: /monk
   pi.registerCommand("monk", {
-    description: "Monk 专属控制台 (/monk [model|undo|commit|review|prompt|ping|status|account])",
+    description: "Monk 专属控制台 (/monk [model|undo|commit|review|prompt|tips|ping|status|account])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const sub = args.trim().toLowerCase();
 
       if (sub === "undo" || sub === "rollback") {
         await handleUndoCommand(ctx, undoStack, () => updateStatus(ctx));
+        return;
+      }
+
+      if (sub === "tips" || sub === "help") {
+        if (ctx.ui) {
+          await ctx.ui.select(
+            "Monk-Pi 极客技巧清单:",
+            PRO_TIPS.map((t, i) => `${i + 1}. ${t}`)
+          );
+        }
         return;
       }
 
@@ -458,6 +517,58 @@ async function getRecentFiles(pi: ExtensionAPI): Promise<string> {
   }
 
   return "[暂未找到最近变动的关联文件]";
+}
+
+// ============================================================================
+// Project Context Profiler
+// ============================================================================
+
+async function getProjectContext(pi: ExtensionAPI): Promise<{ stack: string; gitInfo: string }> {
+  let stack = "通用项目";
+  const cwd = process.cwd();
+
+  const pkgPath = path.join(cwd, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (deps["vue"] || deps["nuxt"]) stack = "Vue 3 技术栈";
+      else if (deps["next"]) stack = "Next.js 全栈";
+      else if (deps["react"]) stack = "React 前端";
+      else if (deps["@earendil-works/pi-coding-agent"]) stack = "Monk-Pi / Agent 工程";
+      else stack = "Node.js 工程";
+    } catch {
+      stack = "Node.js 工程";
+    }
+  } else if (fs.existsSync(path.join(cwd, "go.mod"))) {
+    stack = "Go 后端工程";
+  } else if (fs.existsSync(path.join(cwd, "Cargo.toml"))) {
+    stack = "Rust 系统工程";
+  } else if (
+    fs.existsSync(path.join(cwd, "requirements.txt")) ||
+    fs.existsSync(path.join(cwd, "pyproject.toml"))
+  ) {
+    stack = "Python 工程";
+  } else if (
+    fs.existsSync(path.join(cwd, "pom.xml")) ||
+    fs.existsSync(path.join(cwd, "build.gradle"))
+  ) {
+    stack = "Java / Spring 工程";
+  }
+
+  let gitInfo = "无 Git";
+  const gitCheck = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (gitCheck.code === 0) {
+    const branchRes = await pi.exec("git", ["branch", "--show-current"]);
+    const statusRes = await pi.exec("git", ["status", "--porcelain"]);
+    const branch = branchRes.stdout?.trim() || "HEAD";
+    const changedCount = statusRes.stdout
+      ? statusRes.stdout.split("\n").filter((l) => l.trim()).length
+      : 0;
+    gitInfo = changedCount > 0 ? `${branch}: ${changedCount} 改动` : `${branch}: 干净`;
+  }
+
+  return { stack, gitInfo };
 }
 
 // ============================================================================
@@ -692,9 +803,10 @@ async function handleMenu(
     undoText,
     "3. 语义化 Git 提交 (/commit)",
     "4. 深度代码审查 (/review)",
-    "5. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
-    "6. 探测网络延迟 (Ping API)",
-    "7. 查询用量与到期时间 (Account Info)",
+    "5. 查看极客技巧速查 (/tips)",
+    "6. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
+    "7. 探测网络延迟 (Ping API)",
+    "8. 查询用量与到期时间 (Account Info)",
   ]);
 
   if (!choice) return;
@@ -708,12 +820,17 @@ async function handleMenu(
   } else if (choice.startsWith("4")) {
     await handleReviewCommand(pi, ctx, "");
   } else if (choice.startsWith("5")) {
+    await ctx.ui.select(
+      "Monk-Pi 实用极客技巧清单:",
+      PRO_TIPS.map((t, i) => `${i + 1}. ${t}`)
+    );
+  } else if (choice.startsWith("6")) {
     const nowEnabled = toggleCnPrompt();
     const state = nowEnabled ? "已启用 (零废话·行动优先)" : "已关闭 (恢复原生)";
     ctx.ui.notify(`中文工程系统提示词: ${state}`, "info");
-  } else if (choice.startsWith("6")) {
-    await handlePing(ctx);
   } else if (choice.startsWith("7")) {
+    await handlePing(ctx);
+  } else if (choice.startsWith("8")) {
     ctx.ui.notify("请在浏览器打开 https://monk.party/account/ 查看用量与剩余天数", "info");
   }
 }
