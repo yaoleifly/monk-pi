@@ -25,7 +25,15 @@
     "harness",
     "cli"
   ],
-  "author": "",
+  "author": "yaoleifly",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yaoleifly/monk-pi.git"
+  },
+  "homepage": "https://github.com/yaoleifly/monk-pi#readme",
+  "bugs": {
+    "url": "https://github.com/yaoleifly/monk-pi/issues"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
