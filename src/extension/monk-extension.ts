@@ -1,7 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
+  ToolCallEvent,
 } from "@earendil-works/pi-coding-agent";
 
 const MONK_MODELS = [
@@ -36,9 +39,26 @@ export const CHINESE_ENGINEERING_PROMPT = `
    - 复杂算法或关键业务逻辑处增加简洁明了的中文行内注释。
 `;
 
+interface FileBackup {
+  path: string;
+  relativePath: string;
+  existed: boolean;
+  content?: string;
+}
+
+interface TurnCheckpoint {
+  turnIndex: number;
+  timestamp: number;
+  files: Map<string, FileBackup>;
+}
+
 export default function monkExtension(pi: ExtensionAPI) {
   let turnCount = 0;
   let chinesePromptEnabled = true;
+
+  // Undo Checkpoint Storage
+  const undoStack: TurnCheckpoint[] = [];
+  let currentTurnBackups = new Map<string, FileBackup>();
 
   function updateStatus(ctx: ExtensionContext) {
     if (!ctx.ui) return;
@@ -54,8 +74,10 @@ export default function monkExtension(pi: ExtensionAPI) {
     const indicator = theme.fg("success", "●");
     const label = theme.fg("accent", `Monk: ${model.id}`);
     const cnBadge = chinesePromptEnabled ? theme.fg("dim", " [中]") : "";
+    const undoBadge =
+      undoStack.length > 0 ? theme.fg("warning", ` [可撤销:${undoStack.length}]`) : "";
     const meta = theme.fg("dim", " (1M ctx)");
-    ctx.ui.setStatus("monk", `${indicator} ${label}${cnBadge}${meta}`);
+    ctx.ui.setStatus("monk", `${indicator} ${label}${cnBadge}${undoBadge}${meta}`);
   }
 
   // 1. Lifecycle Events: update footer status
@@ -67,8 +89,10 @@ export default function monkExtension(pi: ExtensionAPI) {
     updateStatus(ctx);
   });
 
-  pi.on("turn_start", async (_event, ctx) => {
-    turnCount++;
+  pi.on("turn_start", async (event, ctx) => {
+    turnCount = event.turnIndex || turnCount + 1;
+    currentTurnBackups = new Map<string, FileBackup>();
+
     if (!ctx.ui) return;
     const model = ctx.model;
     if (model?.provider === "monk") {
@@ -81,10 +105,58 @@ export default function monkExtension(pi: ExtensionAPI) {
   });
 
   pi.on("turn_end", async (_event, ctx) => {
+    // If files were modified during this turn, save to undoStack
+    if (currentTurnBackups.size > 0) {
+      undoStack.push({
+        turnIndex: turnCount,
+        timestamp: Date.now(),
+        files: new Map(currentTurnBackups),
+      });
+
+      // Keep maximum 10 undo checkpoints to save memory
+      if (undoStack.length > 10) {
+        undoStack.shift();
+      }
+    }
+    currentTurnBackups = new Map<string, FileBackup>();
     updateStatus(ctx);
   });
 
-  // 2. Chinese Engineering System Prompt Injection
+  // 2. Intercept Tool Calls: File Pre-Snapshot for Undo
+  pi.on("tool_call", async (event: ToolCallEvent) => {
+    if (event.toolName === "edit" || event.toolName === "write") {
+      const rawPath = (event.input as { path?: string })?.path;
+      if (typeof rawPath === "string" && rawPath.trim()) {
+        const absPath = path.resolve(process.cwd(), rawPath.trim());
+
+        // Only backup the FIRST time a file is touched in the current turn
+        if (!currentTurnBackups.has(absPath)) {
+          const relPath = path.relative(process.cwd(), absPath);
+          try {
+            if (fs.existsSync(absPath)) {
+              const content = fs.readFileSync(absPath, "utf-8");
+              currentTurnBackups.set(absPath, {
+                path: absPath,
+                relativePath: relPath,
+                existed: true,
+                content,
+              });
+            } else {
+              currentTurnBackups.set(absPath, {
+                path: absPath,
+                relativePath: relPath,
+                existed: false,
+              });
+            }
+          } catch {
+            // Ignore read errors for inaccessible files
+          }
+        }
+      }
+    }
+  });
+
+  // 3. Chinese Engineering System Prompt Injection
   pi.on("before_agent_start", async (event, ctx) => {
     if (!chinesePromptEnabled) return;
     const model = ctx.model;
@@ -99,7 +171,7 @@ export default function monkExtension(pi: ExtensionAPI) {
     }
   });
 
-  // 3. Intelligent Context Overflow & Compaction Recovery
+  // 4. Intelligent Context Overflow & Compaction Recovery
   pi.on("message_end", async (event, ctx) => {
     const message = event.message;
     if (!message || message.role !== "assistant") return;
@@ -126,7 +198,22 @@ export default function monkExtension(pi: ExtensionAPI) {
     }
   });
 
-  // 4. Custom Slash Command: /commit (自动中文语义化提交)
+  // 5. Custom Slash Command: /undo (一键撤销上次改动)
+  pi.registerCommand("undo", {
+    description: "一键撤销上一次 AI 对文件的所有修改 (/undo)",
+    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      await handleUndoCommand(ctx, undoStack, () => updateStatus(ctx));
+    },
+  });
+
+  pi.registerCommand("回退", {
+    description: "一键撤销上一次 AI 对文件的所有修改 (/回退)",
+    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      await handleUndoCommand(ctx, undoStack, () => updateStatus(ctx));
+    },
+  });
+
+  // 6. Custom Slash Command: /commit (自动中文语义化提交)
   pi.registerCommand("commit", {
     description: "检查 Git 改动并生成语义化中文 Commit 提交 (/commit [附加说明])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
@@ -134,7 +221,7 @@ export default function monkExtension(pi: ExtensionAPI) {
     },
   });
 
-  // 5. Custom Slash Command: /review (深度中文代码审查)
+  // 7. Custom Slash Command: /review (深度中文代码审查)
   pi.registerCommand("review", {
     description: "对当前 Git 改动或指定文件进行专业中文代码审查 (/review [路径/分支])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
@@ -142,11 +229,16 @@ export default function monkExtension(pi: ExtensionAPI) {
     },
   });
 
-  // 6. Custom Slash Command: /monk (控制台)
+  // 8. Custom Slash Command: /monk
   pi.registerCommand("monk", {
-    description: "Monk 专属控制台 (/monk [model|commit|review|prompt|ping|status|account])",
+    description: "Monk 专属控制台 (/monk [model|undo|commit|review|prompt|ping|status|account])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const sub = args.trim().toLowerCase();
+
+      if (sub === "undo" || sub === "rollback") {
+        await handleUndoCommand(ctx, undoStack, () => updateStatus(ctx));
+        return;
+      }
 
       if (sub === "model" || sub === "switch") {
         await handleModelSwitch(pi, ctx);
@@ -182,13 +274,89 @@ export default function monkExtension(pi: ExtensionAPI) {
       }
 
       // Default: interactive menu
-      await handleMenu(pi, ctx, () => {
-        chinesePromptEnabled = !chinesePromptEnabled;
-        updateStatus(ctx);
-        return chinesePromptEnabled;
-      });
+      await handleMenu(
+        pi,
+        ctx,
+        undoStack,
+        () => {
+          chinesePromptEnabled = !chinesePromptEnabled;
+          updateStatus(ctx);
+          return chinesePromptEnabled;
+        },
+        () => updateStatus(ctx)
+      );
     },
   });
+}
+
+async function handleUndoCommand(
+  ctx: ExtensionCommandContext,
+  undoStack: TurnCheckpoint[],
+  refreshStatus: () => void
+) {
+  if (undoStack.length === 0) {
+    ctx.ui?.notify("当前没有可撤销的 AI 改动记录 (暂无检查点)", "info");
+    return;
+  }
+
+  const checkpoint = undoStack[undoStack.length - 1];
+  const fileBackups = Array.from(checkpoint.files.values());
+
+  if (fileBackups.length === 0) {
+    undoStack.pop();
+    ctx.ui?.notify(`上一个轮次 (Turn ${checkpoint.turnIndex}) 未产生文件改动`, "info");
+    refreshStatus();
+    return;
+  }
+
+  // Display confirmation with file details
+  const fileSummaries = fileBackups.map((f) => {
+    return f.existed ? `  ↺ 恢复原状: ${f.relativePath}` : `  🗑 删除新建: ${f.relativePath}`;
+  });
+
+  const promptText = `确认撤销第 ${checkpoint.turnIndex} 轮的 AI 文件改动？\n${fileSummaries.join("\n")}`;
+  const choice = await ctx.ui?.select(promptText, [
+    `确认撤销 (${fileBackups.length} 个文件)`,
+    "取消",
+  ]);
+
+  if (!choice || choice.includes("取消")) {
+    ctx.ui?.notify("已取消撤销操作", "info");
+    return;
+  }
+
+  // Execute restore
+  undoStack.pop();
+  let restoredCount = 0;
+  let deletedCount = 0;
+  const errors: string[] = [];
+
+  for (const file of fileBackups) {
+    try {
+      if (!file.existed) {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+          deletedCount++;
+        }
+      } else if (file.content !== undefined) {
+        fs.writeFileSync(file.path, file.content, "utf-8");
+        restoredCount++;
+      }
+    } catch (err: unknown) {
+      errors.push(`${file.relativePath}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  refreshStatus();
+
+  if (errors.length > 0) {
+    ctx.ui?.notify(`撤销部分完成，但存在错误: ${errors.join("; ")}`, "warning");
+  } else {
+    ctx.ui?.notify(
+      `已成功撤销改动！共恢复 ${restoredCount} 个文件，清理 ${deletedCount} 个新建文件`,
+      "success"
+    );
+  }
 }
 
 async function handleCommitCommand(
@@ -196,14 +364,12 @@ async function handleCommitCommand(
   ctx: ExtensionCommandContext,
   extraArgs: string
 ) {
-  // Check if current directory is a git repository
   const gitCheck = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
   if (gitCheck.code !== 0) {
     ctx.ui?.notify("当前目录不是 Git 仓库，无法执行 /commit", "warning");
     return;
   }
 
-  // Check if there are changes
   const statusCheck = await pi.exec("git", ["status", "--porcelain"]);
   if (!statusCheck.stdout || !statusCheck.stdout.trim()) {
     ctx.ui?.notify("Git 工作区干净，没有待提交的改动 (Working tree clean)", "info");
@@ -250,7 +416,6 @@ async function handleReviewCommand(
     return;
   }
 
-  // If no target path specified, review uncommitted git changes
   const gitCheck = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
   if (gitCheck.code !== 0) {
     ctx.ui?.notify("当前目录不是 Git 仓库，请指定具体文件路径审查，例如: /review src/index.ts", "warning");
@@ -338,17 +503,25 @@ async function handlePing(ctx: ExtensionCommandContext) {
 async function handleMenu(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
-  toggleCnPrompt: () => boolean
+  undoStack: TurnCheckpoint[],
+  toggleCnPrompt: () => boolean,
+  refreshStatus: () => void
 ) {
   if (!ctx.ui) return;
 
+  const undoText =
+    undoStack.length > 0
+      ? `2. 一键撤销上次改动 (/undo · ${undoStack.length} 个可回退)`
+      : "2. 一键撤销上次改动 (/undo · 暂无)";
+
   const choice = await ctx.ui.select("Monk API 控制台", [
     "1. 切换会话模型 (Switch Model)",
-    "2. 语义化 Git 提交 (/commit)",
-    "3. 深度代码审查 (/review)",
-    "4. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
-    "5. 探测网络延迟 (Ping API)",
-    "6. 查询用量与到期时间 (Account Info)",
+    undoText,
+    "3. 语义化 Git 提交 (/commit)",
+    "4. 深度代码审查 (/review)",
+    "5. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
+    "6. 探测网络延迟 (Ping API)",
+    "7. 查询用量与到期时间 (Account Info)",
   ]);
 
   if (!choice) return;
@@ -356,16 +529,18 @@ async function handleMenu(
   if (choice.startsWith("1")) {
     await handleModelSwitch(pi, ctx);
   } else if (choice.startsWith("2")) {
-    await handleCommitCommand(pi, ctx, "");
+    await handleUndoCommand(ctx, undoStack, refreshStatus);
   } else if (choice.startsWith("3")) {
-    await handleReviewCommand(pi, ctx, "");
+    await handleCommitCommand(pi, ctx, "");
   } else if (choice.startsWith("4")) {
+    await handleReviewCommand(pi, ctx, "");
+  } else if (choice.startsWith("5")) {
     const nowEnabled = toggleCnPrompt();
     const state = nowEnabled ? "已启用 (零废话·行动优先)" : "已关闭 (恢复原生)";
     ctx.ui.notify(`中文工程系统提示词: ${state}`, "info");
-  } else if (choice.startsWith("5")) {
-    await handlePing(ctx);
   } else if (choice.startsWith("6")) {
+    await handlePing(ctx);
+  } else if (choice.startsWith("7")) {
     ctx.ui.notify("请在浏览器打开 https://monk.party/account/ 查看用量与剩余天数", "info");
   }
 }
