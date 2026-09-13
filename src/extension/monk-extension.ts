@@ -126,14 +126,40 @@ export default function monkExtension(pi: ExtensionAPI) {
     }
   });
 
-  // 4. Custom Slash Command: /monk
+  // 4. Custom Slash Command: /commit (自动中文语义化提交)
+  pi.registerCommand("commit", {
+    description: "检查 Git 改动并生成语义化中文 Commit 提交 (/commit [附加说明])",
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
+      await handleCommitCommand(pi, ctx, args);
+    },
+  });
+
+  // 5. Custom Slash Command: /review (深度中文代码审查)
+  pi.registerCommand("review", {
+    description: "对当前 Git 改动或指定文件进行专业中文代码审查 (/review [路径/分支])",
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
+      await handleReviewCommand(pi, ctx, args);
+    },
+  });
+
+  // 6. Custom Slash Command: /monk (控制台)
   pi.registerCommand("monk", {
-    description: "Monk 专属控制台 (/monk [model|prompt|ping|status|account])",
+    description: "Monk 专属控制台 (/monk [model|commit|review|prompt|ping|status|account])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const sub = args.trim().toLowerCase();
 
       if (sub === "model" || sub === "switch") {
         await handleModelSwitch(pi, ctx);
+        return;
+      }
+
+      if (sub === "commit" || sub === "ci") {
+        await handleCommitCommand(pi, ctx, "");
+        return;
+      }
+
+      if (sub === "review" || sub === "cr") {
+        await handleReviewCommand(pi, ctx, "");
         return;
       }
 
@@ -163,6 +189,94 @@ export default function monkExtension(pi: ExtensionAPI) {
       });
     },
   });
+}
+
+async function handleCommitCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  extraArgs: string
+) {
+  // Check if current directory is a git repository
+  const gitCheck = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (gitCheck.code !== 0) {
+    ctx.ui?.notify("当前目录不是 Git 仓库，无法执行 /commit", "warning");
+    return;
+  }
+
+  // Check if there are changes
+  const statusCheck = await pi.exec("git", ["status", "--porcelain"]);
+  if (!statusCheck.stdout || !statusCheck.stdout.trim()) {
+    ctx.ui?.notify("Git 工作区干净，没有待提交的改动 (Working tree clean)", "info");
+    return;
+  }
+
+  ctx.ui?.notify("正在分析 Git 改动并准备中文语义化提交...", "info");
+
+  const prompt = [
+    "请检查当前的 Git 改动，并按照 Conventional Commits 规范生成地道的中文语义化提交信息并完成提交：",
+    "1. 先调用 bash 查看当前变更状态 (`git status -s`) 与代码改动 (`git diff --stat` 和 `git diff`)。",
+    "2. 根据变更内容确定规范的提交信息：",
+    "   格式：<type>(<scope>): <简明清晰的中文提交主题>",
+    "   常见类型：feat(新特性)、fix(修复)、docs(文档)、refactor(重构)、perf(性能)、test(测试)、chore(杂项)。",
+    "3. 直接调用 bash 执行 `git add -A` 并使用 `git commit -m \"...\"` 执行提交。",
+    "4. 提交完成后，用两句话简要汇报 commit hash 与提交信息。",
+    extraArgs ? `\n附加要求：${extraArgs}` : "",
+  ].join("\n");
+
+  pi.sendUserMessage(prompt);
+}
+
+async function handleReviewCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  targetPath: string
+) {
+  const target = targetPath.trim();
+
+  if (target) {
+    ctx.ui?.notify(`正在针对指定目标发起深度代码审查: ${target} ...`, "info");
+    const prompt = [
+      `请对指定目标进行专业、深入的代码审查 (Code Review)：${target}`,
+      "1. 调用 read 工具阅读相关源代码及项目上下文。",
+      "2. 从以下四个关键维度输出结构化中文审查报告：",
+      "   - 🚨【潜在缺陷与边界异常】：空指针/未定义、并发竞争、未捕获异常、边界越界等隐患。",
+      "   - ⚡【性能与资源消耗】：无意义循环、内存泄漏、过多重绘、昂贵计算或连接未释放。",
+      "   - 🏗【设计与可维护性】：单一职责原则、模块解耦、代码复用、命名规范与可读性。",
+      "   - 💡【具体改进建议】：指出具体有问题的代码位置，并给出优化后的参考实现片段。",
+      "3. 语言保持客观专业，突出高价值修改意见。",
+    ].join("\n");
+
+    pi.sendUserMessage(prompt);
+    return;
+  }
+
+  // If no target path specified, review uncommitted git changes
+  const gitCheck = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (gitCheck.code !== 0) {
+    ctx.ui?.notify("当前目录不是 Git 仓库，请指定具体文件路径审查，例如: /review src/index.ts", "warning");
+    return;
+  }
+
+  const statusCheck = await pi.exec("git", ["status", "--porcelain"]);
+  if (!statusCheck.stdout || !statusCheck.stdout.trim()) {
+    ctx.ui?.notify("当前 Git 工作区无未提交改动。可指定特定文件审查，例如: /review src/index.ts", "info");
+    return;
+  }
+
+  ctx.ui?.notify("正在针对当前未提交的 Git 改动发起深度代码审查...", "info");
+
+  const prompt = [
+    "请对当前工作区的所有未提交改动 (Uncommitted Changes) 进行专业、深入的中文代码审查 (Code Review)：",
+    "1. 调用 bash 执行 `git diff` 及 `git diff --staged` 获取完整改动代码。",
+    "2. 从以下四个关键维度进行分析并输出结构清晰的 Markdown 审查报告：",
+    "   - 🚨【潜在缺陷与边界异常】：空指针/未定义、逻辑死角、未处理的错误、边界异常。",
+    "   - ⚡【性能与资源消耗】：不必要的循环、重复渲染、未清理的副作用、高耗时操作。",
+    "   - 🏗【设计与架构质量】：代码解耦、单一职责、命名契合度与可读性。",
+    "   - 💡【关键重构建议与片段】：给出具体的修改方案与推荐的代码重构写法。",
+    "3. 如果改动整体质量优秀，请明确指出亮点并予以肯定。",
+  ].join("\n");
+
+  pi.sendUserMessage(prompt);
 }
 
 async function handleModelSwitch(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
@@ -230,9 +344,11 @@ async function handleMenu(
 
   const choice = await ctx.ui.select("Monk API 控制台", [
     "1. 切换会话模型 (Switch Model)",
-    "2. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
-    "3. 探测网络延迟 (Ping API)",
-    "4. 查询用量与到期时间 (Account Info)",
+    "2. 语义化 Git 提交 (/commit)",
+    "3. 深度代码审查 (/review)",
+    "4. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
+    "5. 探测网络延迟 (Ping API)",
+    "6. 查询用量与到期时间 (Account Info)",
   ]);
 
   if (!choice) return;
@@ -240,12 +356,16 @@ async function handleMenu(
   if (choice.startsWith("1")) {
     await handleModelSwitch(pi, ctx);
   } else if (choice.startsWith("2")) {
+    await handleCommitCommand(pi, ctx, "");
+  } else if (choice.startsWith("3")) {
+    await handleReviewCommand(pi, ctx, "");
+  } else if (choice.startsWith("4")) {
     const nowEnabled = toggleCnPrompt();
     const state = nowEnabled ? "已启用 (零废话·行动优先)" : "已关闭 (恢复原生)";
     ctx.ui.notify(`中文工程系统提示词: ${state}`, "info");
-  } else if (choice.startsWith("3")) {
+  } else if (choice.startsWith("5")) {
     await handlePing(ctx);
-  } else if (choice.startsWith("4")) {
+  } else if (choice.startsWith("6")) {
     ctx.ui.notify("请在浏览器打开 https://monk.party/account/ 查看用量与剩余天数", "info");
   }
 }
