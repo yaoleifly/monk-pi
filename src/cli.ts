@@ -5,6 +5,7 @@ import pc from "picocolors";
 import { doctorCommand } from "./commands/doctor";
 import { loginCommand } from "./commands/login";
 import { modelCommand } from "./commands/model";
+import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
 import { statusCommand } from "./commands/status";
 import { MONK_ACCOUNT_URL, MONK_WEBSITE } from "./constants";
@@ -14,7 +15,16 @@ const rawArgs = process.argv.slice(2);
 const firstArg = rawArgs[0];
 
 // Known subcommands
-const SUBCOMMANDS = new Set(["login", "auth", "status", "check", "model", "doctor"]);
+const SUBCOMMANDS = new Set([
+  "login",
+  "auth",
+  "status",
+  "check",
+  "model",
+  "doctor",
+  "resume",
+  "history",
+]);
 
 async function main() {
   // If first argument is one of the dedicated subcommands
@@ -55,8 +65,28 @@ async function main() {
         await doctorCommand();
       });
 
+    program
+      .command("resume")
+      .alias("history")
+      .description("可视化浏览并恢复历史会话 (断点续写)")
+      .action(async () => {
+        const exitCode = await resumeCommand(rawArgs.slice(1));
+        process.exit(exitCode);
+      });
+
     await program.parseAsync(process.argv);
     return;
+  }
+
+  // Quick shortcut flags for resume
+  if (firstArg === "-r" || firstArg === "--resume") {
+    const exitCode = await resumeCommand(rawArgs.slice(1));
+    process.exit(exitCode);
+  }
+
+  if (firstArg === "continue") {
+    const exitCode = await runCommand(["--continue", ...rawArgs.slice(1)]);
+    process.exit(exitCode);
   }
 
   // Handle explicit help flag

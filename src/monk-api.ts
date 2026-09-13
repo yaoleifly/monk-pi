@@ -101,6 +101,31 @@ export async function validateApiKey(
 }
 
 /**
+ * 提取响应正文中的首个完整 JSON 对象。
+ * Monk 上游即使对非流式请求也可能返回 text/event-stream，正文末尾粘连 `data: [DONE]`，
+ * 直接 response.json() 会抛 "Unexpected non-whitespace character after JSON"。
+ */
+function extractFirstJson(text: string): {
+  choices?: Array<{ message?: { content?: string } }>;
+  error?: { message?: string };
+} {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // 容错：去掉 SSE 帧前缀后按大括号边界截取
+    const cleaned = text.replace(/^data:\s*/gm, "");
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end <= start) return {};
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch {
+      return {};
+    }
+  }
+}
+
+/**
  * Tests an actual chat completion to ensure the model responds properly
  */
 export async function testChatCompletion(
@@ -113,7 +138,7 @@ export async function testChatCompletion(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -133,22 +158,17 @@ export async function testChatCompletion(
     clearTimeout(timeoutId);
     const latencyMs = Date.now() - startTime;
 
+    const payload = extractFirstJson(await response.text());
+
     if (!response.ok) {
-      const errJson = (await response.json().catch(() => ({}))) as {
-        error?: { message?: string };
-      };
       return {
         success: false,
         latencyMs,
-        error: errJson.error?.message || `HTTP ${response.status}`,
+        error: payload.error?.message || `HTTP ${response.status}`,
       };
     }
 
-    const json = (await response.json().catch(() => ({}))) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-
-    const reply = json.choices?.[0]?.message?.content?.trim() || "";
+    const reply = (payload.choices?.[0]?.message?.content ?? "").trim();
 
     return {
       success: true,
