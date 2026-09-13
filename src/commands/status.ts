@@ -13,9 +13,11 @@ export async function statusCommand(): Promise<void> {
   // 1. Pi CLI Status
   const piDetect = detectPi();
   if (piDetect.installed) {
-    logSuccess(`Pi 运行环境: ${pc.bold("已就绪")} (v${piDetect.version})`);
+    logSuccess(
+      `Pi 运行环境: ${pc.bold("已就绪")} (v${piDetect.version}) · ${pc.dim(`[来源: ${piDetect.description}]`)}`
+    );
   } else {
-    logWarn(`Pi 运行环境: ${pc.red("未检测到全局安装")}`);
+    logWarn(`Pi 运行环境: ${pc.red("未检测到可用运行时")}`);
     console.log(`    ${pc.dim("请运行 npm install -g @earendil-works/pi-coding-agent")}`);
   }
 

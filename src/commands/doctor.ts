@@ -30,10 +30,12 @@ export async function doctorCommand(): Promise<void> {
   // 3. Pi CLI Check
   const pi = detectPi();
   if (pi.installed) {
-    logSuccess(`Pi 核心套件: ${pc.bold(`已安装 (v${pi.version})`)}`);
+    logSuccess(
+      `Pi 核心套件: ${pc.bold(`已就绪 (v${pi.version})`)} · ${pc.dim(`[来源: ${pi.description}]`)}`
+    );
   } else {
     hasIssue = true;
-    logError(`Pi 核心套件: ${pc.bold("未安装")}`);
+    logError(`Pi 核心套件: ${pc.bold("未找到可用运行时")}`);
     console.log(`    ${pc.dim("解决办法: 运行 npm install -g @earendil-works/pi-coding-agent")}`);
   }
 

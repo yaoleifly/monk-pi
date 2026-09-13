@@ -33,6 +33,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.85.1",
     "@inquirer/prompts": "^8.7.2",
     "commander": "^15.0.0",
     "cross-spawn": "^7.0.6",
