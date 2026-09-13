@@ -21,8 +21,24 @@ const OVERFLOW_PATTERNS = [
   /exceed.*context/i,
 ];
 
+export const CHINESE_ENGINEERING_PROMPT = `
+# 中文工程交互规范 (Monk Chinese Engineering Persona)
+1. 语言表达准则：
+   - 全程使用干练、专业、自然的中文进行沟通与技术分析。
+   - 严禁任何形式的客套与铺垫废话（严禁输出诸如“好的”、“没问题”、“收到”、“接下来我将……”、“这是一个很好的问题”等无意义填充词）。
+   - 代码中的标识符、类名、函数名、库名、Git 命令、参数选项及业界通用技术名词（如 JWT、Promise、Hook、WebSocket、Props 等）保持英文原貌，切勿生硬翻译。
+2. 任务执行准则 (Action First)：
+   - 行动先于解释。凡是需要阅读文件、修改代码或执行系统命令的场景，直接调用相应工具 (read / edit / write / bash)，禁止在调用工具前陈述冗余的操作计划。
+   - 工具调用后，用最简练的一至两句话总结改动要点（明确指出修改了哪个模块、解决了什么问题），必要时提供验证命令（如测试或启动命令）。
+3. 代码质量准则：
+   - 严守既有代码库的代码风格与架构规范。
+   - 修改代码必须精准微调，避免不必要的格式洗牌或整文件盲目重写。
+   - 复杂算法或关键业务逻辑处增加简洁明了的中文行内注释。
+`;
+
 export default function monkExtension(pi: ExtensionAPI) {
   let turnCount = 0;
+  let chinesePromptEnabled = true;
 
   function updateStatus(ctx: ExtensionContext) {
     if (!ctx.ui) return;
@@ -37,8 +53,9 @@ export default function monkExtension(pi: ExtensionAPI) {
     const theme = ctx.ui.theme;
     const indicator = theme.fg("success", "●");
     const label = theme.fg("accent", `Monk: ${model.id}`);
+    const cnBadge = chinesePromptEnabled ? theme.fg("dim", " [中]") : "";
     const meta = theme.fg("dim", " (1M ctx)");
-    ctx.ui.setStatus("monk", `${indicator} ${label}${meta}`);
+    ctx.ui.setStatus("monk", `${indicator} ${label}${cnBadge}${meta}`);
   }
 
   // 1. Lifecycle Events: update footer status
@@ -67,7 +84,22 @@ export default function monkExtension(pi: ExtensionAPI) {
     updateStatus(ctx);
   });
 
-  // 2. Intelligent Context Overflow & Compaction Recovery
+  // 2. Chinese Engineering System Prompt Injection
+  pi.on("before_agent_start", async (event, ctx) => {
+    if (!chinesePromptEnabled) return;
+    const model = ctx.model;
+    const isMonk = model && model.provider === "monk";
+    if (!isMonk) return;
+
+    const currentPrompt = event.systemPrompt || "";
+    if (!currentPrompt.includes("中文工程交互规范")) {
+      return {
+        systemPrompt: `${currentPrompt}\n\n${CHINESE_ENGINEERING_PROMPT.trim()}`,
+      };
+    }
+  });
+
+  // 3. Intelligent Context Overflow & Compaction Recovery
   pi.on("message_end", async (event, ctx) => {
     const message = event.message;
     if (!message || message.role !== "assistant") return;
@@ -94,14 +126,22 @@ export default function monkExtension(pi: ExtensionAPI) {
     }
   });
 
-  // 3. Custom Slash Command: /monk
+  // 4. Custom Slash Command: /monk
   pi.registerCommand("monk", {
-    description: "Monk 专属控制台 (/monk [model|ping|status|account])",
+    description: "Monk 专属控制台 (/monk [model|prompt|ping|status|account])",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const sub = args.trim().toLowerCase();
 
       if (sub === "model" || sub === "switch") {
         await handleModelSwitch(pi, ctx);
+        return;
+      }
+
+      if (sub === "prompt" || sub === "cn") {
+        chinesePromptEnabled = !chinesePromptEnabled;
+        const state = chinesePromptEnabled ? "已启用 (精炼干练)" : "已关闭 (恢复原生默认)";
+        ctx.ui?.notify(`Monk 中文工程系统提示词: ${state}`, "info");
+        updateStatus(ctx);
         return;
       }
 
@@ -116,7 +156,11 @@ export default function monkExtension(pi: ExtensionAPI) {
       }
 
       // Default: interactive menu
-      await handleMenu(pi, ctx);
+      await handleMenu(pi, ctx, () => {
+        chinesePromptEnabled = !chinesePromptEnabled;
+        updateStatus(ctx);
+        return chinesePromptEnabled;
+      });
     },
   });
 }
@@ -177,13 +221,18 @@ async function handlePing(ctx: ExtensionCommandContext) {
   }
 }
 
-async function handleMenu(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
+async function handleMenu(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  toggleCnPrompt: () => boolean
+) {
   if (!ctx.ui) return;
 
   const choice = await ctx.ui.select("Monk API 控制台", [
     "1. 切换会话模型 (Switch Model)",
-    "2. 探测网络延迟 (Ping API)",
-    "3. 查询用量与到期时间 (Account Info)",
+    "2. 切换中文工程提示词开关 (Toggle Chinese Prompt)",
+    "3. 探测网络延迟 (Ping API)",
+    "4. 查询用量与到期时间 (Account Info)",
   ]);
 
   if (!choice) return;
@@ -191,8 +240,12 @@ async function handleMenu(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
   if (choice.startsWith("1")) {
     await handleModelSwitch(pi, ctx);
   } else if (choice.startsWith("2")) {
-    await handlePing(ctx);
+    const nowEnabled = toggleCnPrompt();
+    const state = nowEnabled ? "已启用 (零废话·行动优先)" : "已关闭 (恢复原生)";
+    ctx.ui.notify(`中文工程系统提示词: ${state}`, "info");
   } else if (choice.startsWith("3")) {
+    await handlePing(ctx);
+  } else if (choice.startsWith("4")) {
     ctx.ui.notify("请在浏览器打开 https://monk.party/account/ 查看用量与剩余天数", "info");
   }
 }

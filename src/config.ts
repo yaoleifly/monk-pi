@@ -147,7 +147,12 @@ export function syncPiModelsJson(apiKey?: string): { success: boolean; path: str
 /**
  * Safely writes or updates the Monk native extension in ~/.pi/agent/extensions/monk.ts
  */
-export function syncPiExtension(): { success: boolean; path: string; error?: string } {
+export function syncPiExtension(force: boolean = false): {
+  success: boolean;
+  path: string;
+  updated: boolean;
+  error?: string;
+} {
   const extDir = getPiExtensionsDir();
   const extFile = getPiMonkExtensionFile();
 
@@ -156,12 +161,21 @@ export function syncPiExtension(): { success: boolean; path: string; error?: str
       fs.mkdirSync(extDir, { recursive: true });
     }
 
-    fs.writeFileSync(extFile, MONK_EXTENSION_CODE.trim() + "\n", "utf-8");
-    return { success: true, path: extFile };
+    const targetContent = MONK_EXTENSION_CODE.trim() + "\n";
+    if (fs.existsSync(extFile)) {
+      const existing = fs.readFileSync(extFile, "utf-8");
+      if (existing === targetContent && !force) {
+        return { success: true, path: extFile, updated: false };
+      }
+    }
+
+    fs.writeFileSync(extFile, targetContent, "utf-8");
+    return { success: true, path: extFile, updated: true };
   } catch (err: unknown) {
     return {
       success: false,
       path: extFile,
+      updated: false,
       error: err instanceof Error ? err.message : String(err),
     };
   }

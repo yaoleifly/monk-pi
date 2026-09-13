@@ -92,17 +92,19 @@ export async function doctorCommand(): Promise<void> {
   }
 
   // 6. Monk Native Extension Check
-  const extFile = getPiMonkExtensionFile();
-  if (fs.existsSync(extFile)) {
-    logSuccess(`Pi 原生扩展: ${pc.bold("已安装")} (/monk 指令、状态栏与溢出自动重试就绪)`);
-  } else {
-    logWarn(`Pi 原生扩展: 未安装，正在为您自动部署...`);
-    const extRes = syncPiExtension();
-    if (extRes.success) {
-      logSuccess(`Pi 原生扩展: 部署完成`);
+  const extRes = syncPiExtension();
+  if (extRes.success) {
+    if (extRes.updated) {
+      logSuccess(
+        `Pi 原生扩展: ${pc.bold("已自动更新至最新版")} (中文工程提示词、/monk 指令与自动重试就绪)`
+      );
     } else {
-      logError(`Pi 原生扩展部署失败: ${extRes.error}`);
+      logSuccess(
+        `Pi 原生扩展: ${pc.bold("已就绪")} (中文工程提示词、/monk 指令与自动重试就绪)`
+      );
     }
+  } else {
+    logError(`Pi 原生扩展部署失败: ${extRes.error}`);
   }
 
   // 7. Network connectivity to Monk
