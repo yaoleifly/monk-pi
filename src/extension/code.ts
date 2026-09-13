@@ -1,6 +1,6 @@
 export const MONK_EXTENSION_CODE = `// @monk-managed-pi-extension
 // Monk × Pi Native Extension
-// Features: Footer status, Chinese engineering prompt, /undo (instant rollback), /commit, /review, /monk slash commands, and context overflow auto-compaction
+// Features: Footer status, Context macros (@diff, @recent, @git, @staged), Chinese engineering prompt, /undo, /commit, /review, /monk, and auto-compaction
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -65,9 +65,54 @@ export default function monkExtension(pi) {
     ctx.ui.setStatus("monk", \`\${indicator} \${label}\${cnBadge}\${undoBadge}\${meta}\`);
   }
 
-  // 1. Lifecycle Events: update footer status
+  // 1. Lifecycle Events
   pi.on("session_start", async (_event, ctx) => {
     updateStatus(ctx);
+
+    try {
+      if (ctx.ui && typeof ctx.ui.addAutocompleteProvider === "function") {
+        ctx.ui.addAutocompleteProvider((current) => ({
+          triggerCharacters: ["@"],
+          async getSuggestions(lines, cursorLine, cursorCol, options) {
+            const line = lines[cursorLine] ?? "";
+            const beforeCursor = line.slice(0, cursorCol);
+            const match = beforeCursor.match(/(?:^|[ \\t])@([a-zA-Z]*)$/);
+
+            const macros = [
+              { value: "@diff", label: "@diff", description: "当前未提交的 Git 改动代码 (Working Tree Diff)" },
+              { value: "@staged", label: "@staged", description: "当前 Git 暂存区改动 (git diff --staged)" },
+              { value: "@recent", label: "@recent", description: "最近修改过的相关项目文件列表" },
+              { value: "@git", label: "@git", description: "当前 Git 分支状态与最新提交记录" },
+            ];
+
+            if (!match) {
+              return current.getSuggestions(lines, cursorLine, cursorCol, options);
+            }
+
+            const query = (match[1] || "").toLowerCase();
+            const filtered = macros.filter((m) => m.value.slice(1).startsWith(query));
+
+            const baseResult = await current.getSuggestions(lines, cursorLine, cursorCol, options);
+            const baseItems = (baseResult && baseResult.items) || [];
+
+            if (filtered.length > 0) {
+              return {
+                items: [...filtered, ...baseItems],
+                prefix: \`@\${query}\`,
+              };
+            }
+
+            return baseResult;
+          },
+          applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
+            return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+          },
+          shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
+            return current.shouldTriggerFileCompletion ? current.shouldTriggerFileCompletion(lines, cursorLine, cursorCol) : true;
+          },
+        }));
+      }
+    } catch {}
   });
 
   pi.on("model_select", async (_event, ctx) => {
@@ -105,7 +150,51 @@ export default function monkExtension(pi) {
     updateStatus(ctx);
   });
 
-  // 2. Intercept Tool Calls: File Pre-Snapshot for Undo
+  // 2. Magic Context Macro Expansion (@diff, @recent, @git, @staged)
+  pi.on("input", async (event, ctx) => {
+    if (event.source === "extension") return { action: "continue" };
+
+    let text = event.text || "";
+    let modified = false;
+
+    if (
+      text.includes("@diff") ||
+      text.includes("@staged") ||
+      text.includes("@git") ||
+      text.includes("@recent")
+    ) {
+      if (text.includes("@diff")) {
+        const diffBlock = await getGitDiff(pi);
+        text = text.replaceAll("@diff", diffBlock);
+        modified = true;
+      }
+
+      if (text.includes("@staged")) {
+        const stagedBlock = await getGitStagedDiff(pi);
+        text = text.replaceAll("@staged", stagedBlock);
+        modified = true;
+      }
+
+      if (text.includes("@git")) {
+        const gitBlock = await getGitSummary(pi);
+        text = text.replaceAll("@git", gitBlock);
+        modified = true;
+      }
+
+      if (text.includes("@recent")) {
+        const recentBlock = await getRecentFiles(pi);
+        text = text.replaceAll("@recent", recentBlock);
+        modified = true;
+      }
+
+      if (modified) {
+        ctx.ui && ctx.ui.notify("已成功解析并展开上下文宏 (@diff / @recent / @git)", "info");
+        return { action: "transform", text };
+      }
+    }
+  });
+
+  // 3. Intercept Tool Calls: File Pre-Snapshot for Undo
   pi.on("tool_call", async (event) => {
     if (event.toolName === "edit" || event.toolName === "write") {
       const rawPath = event.input && event.input.path;
@@ -136,7 +225,7 @@ export default function monkExtension(pi) {
     }
   });
 
-  // 3. Chinese Engineering System Prompt Injection
+  // 4. Chinese Engineering System Prompt Injection
   pi.on("before_agent_start", async (event, ctx) => {
     if (!chinesePromptEnabled) return;
     const model = ctx.model;
@@ -151,7 +240,7 @@ export default function monkExtension(pi) {
     }
   });
 
-  // 4. Intelligent Context Overflow & Compaction Recovery
+  // 5. Intelligent Context Overflow & Compaction Recovery
   pi.on("message_end", async (event, ctx) => {
     const message = event.message;
     if (!message || message.role !== "assistant") return;
@@ -178,7 +267,7 @@ export default function monkExtension(pi) {
     }
   });
 
-  // 5. Custom Slash Command: /undo (一键撤销)
+  // 6. Custom Slash Command: /undo (一键撤销)
   pi.registerCommand("undo", {
     description: "一键撤销上一次 AI 对文件的所有修改 (/undo)",
     handler: async (_args, ctx) => {
@@ -193,7 +282,7 @@ export default function monkExtension(pi) {
     },
   });
 
-  // 6. Custom Slash Command: /commit (自动中文语义化提交)
+  // 7. Custom Slash Command: /commit (自动中文语义化提交)
   pi.registerCommand("commit", {
     description: "检查 Git 改动并生成语义化中文 Commit 提交 (/commit [附加说明])",
     handler: async (args, ctx) => {
@@ -201,7 +290,7 @@ export default function monkExtension(pi) {
     },
   });
 
-  // 7. Custom Slash Command: /review (深度中文代码审查)
+  // 8. Custom Slash Command: /review (深度中文代码审查)
   pi.registerCommand("review", {
     description: "对当前 Git 改动或指定文件进行专业中文代码审查 (/review [路径/分支])",
     handler: async (args, ctx) => {
@@ -209,7 +298,7 @@ export default function monkExtension(pi) {
     },
   });
 
-  // 8. Custom Slash Command: /monk
+  // 9. Custom Slash Command: /monk
   pi.registerCommand("monk", {
     description: "Monk 专属控制台 (/monk [model|undo|commit|review|prompt|ping|status|account])",
     handler: async (args, ctx) => {
@@ -268,6 +357,91 @@ export default function monkExtension(pi) {
     },
   });
 }
+
+// ============================================================================
+// Context Macro Resolvers (@diff, @staged, @git, @recent)
+// ============================================================================
+
+async function getGitDiff(pi) {
+  const check = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (check.code !== 0) return "[当前目录非 Git 仓库，无法获取 @diff]";
+
+  const res = await pi.exec("git", ["diff"]);
+  const stagedRes = await pi.exec("git", ["diff", "--staged"]);
+  const combined = [res.stdout && res.stdout.trim(), stagedRes.stdout && stagedRes.stdout.trim()]
+    .filter(Boolean)
+    .join("\\n\\n");
+
+  if (!combined) return "[当前 Git 工作区干净，暂无未提交的代码改动]";
+
+  const lines = combined.split("\\n");
+  if (lines.length > 500) {
+    const truncated = lines.slice(0, 500).join("\\n");
+    return \`\\n\`\`\`diff\\n# [Git Diff 变更代码 - 共 \${lines.length} 行，展示前 500 行]\\n\${truncated}\\n\`\`\`\\n\`;
+  }
+
+  return \`\\n\`\`\`diff\\n# [Git Diff 变更代码 - 共 \${lines.length} 行]\\n\${combined}\\n\`\`\`\\n\`;
+}
+
+async function getGitStagedDiff(pi) {
+  const check = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (check.code !== 0) return "[当前目录非 Git 仓库，无法获取 @staged]";
+
+  const res = await pi.exec("git", ["diff", "--staged"]);
+  const diff = res.stdout && res.stdout.trim();
+  if (!diff) return "[当前 Git 暂存区暂无改动 (Staged is empty)]";
+
+  return \`\\n\`\`\`diff\\n# [Git 暂存区代码变动 (Staged Diff)]\\n\${diff}\\n\`\`\`\\n\`;
+}
+
+async function getGitSummary(pi) {
+  const check = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (check.code !== 0) return "[当前目录非 Git 仓库，无法获取 @git]";
+
+  const branchRes = await pi.exec("git", ["branch", "--show-current"]);
+  const statusRes = await pi.exec("git", ["status", "-s"]);
+  const logRes = await pi.exec("git", ["log", "-n", "3", "--oneline"]);
+
+  const branch = (branchRes.stdout && branchRes.stdout.trim()) || "HEAD";
+  const status = (statusRes.stdout && statusRes.stdout.trim()) || "(工作区干净)";
+  const log = (logRes.stdout && logRes.stdout.trim()) || "(暂无提交记录)";
+
+  return \`\\n\`\`\`\\n# [Git 当前分支与状态信息]\\n分支: \${branch}\\n状态变动:\\n\${status}\\n\\n最近 3 条提交:\\n\${log}\\n\`\`\`\\n\`;
+}
+
+async function getRecentFiles(pi) {
+  const check = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+  if (check.code === 0) {
+    const statusRes = await pi.exec("git", ["status", "--porcelain"]);
+    const logRes = await pi.exec("git", ["log", "-n", "5", "--name-only", "--format="]);
+    const fileSet = new Set();
+
+    if (statusRes.stdout) {
+      statusRes.stdout.split("\\n").forEach((line) => {
+        const p = line.slice(3).trim();
+        if (p) fileSet.add(p);
+      });
+    }
+
+    if (logRes.stdout) {
+      logRes.stdout.split("\\n").forEach((line) => {
+        const p = line.trim();
+        if (p) fileSet.add(p);
+      });
+    }
+
+    const files = Array.from(fileSet).slice(0, 15);
+    if (files.length > 0) {
+      return \`\\n# [最近变动关联的项目源文件列表]\\n\${files.map((f) => \`- \${f}\`).join("\\n")}\\n\`;
+    }
+  }
+
+  return "[暂未找到最近变动的关联文件]";
+}
+
+// ============================================================================
+// Undo, Commit, Review & Control Handlers
+// ============================================================================
 
 async function handleUndoCommand(ctx, undoStack, refreshStatus) {
   if (undoStack.length === 0) {
