@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { saveMonkConfig, syncPiModelsJson, resolveApiKey } from "../config";
+import { saveMonkConfig, syncPiExtension, syncPiModelsJson, resolveApiKey } from "../config";
 import { validateApiKey } from "../monk-api";
 import { logError, logInfo, logSuccess, logWarn, maskKey, printBanner, promptForApiKey } from "../ui";
 
@@ -34,12 +34,16 @@ export async function loginCommand(): Promise<boolean> {
   });
   logSuccess(`凭证已保存至本地配置`);
 
-  // Sync to ~/.pi/agent/models.json
+  // Sync to ~/.pi/agent/models.json & extensions
   const syncResult = syncPiModelsJson(apiKey);
+  const extResult = syncPiExtension();
   if (syncResult.success) {
     logSuccess(`已成功同步并优化 Pi 配置文件: ${pc.dim(syncResult.path)}`);
   } else {
     logWarn(`同步 Pi 配置文件失败: ${syncResult.error}`);
+  }
+  if (extResult.success) {
+    logSuccess(`已安装 Monk 原生 TUI 扩展: ${pc.dim(extResult.path)}`);
   }
 
   console.log();

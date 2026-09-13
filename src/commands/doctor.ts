@@ -1,8 +1,18 @@
 import fs from "node:fs";
 import os from "node:os";
 import pc from "picocolors";
-import { getDefaultModel, resolveApiKey, syncPiModelsJson } from "../config";
-import { MONK_BASE_URL, getMonkConfigFile, getPiModelsFile } from "../constants";
+import {
+  getDefaultModel,
+  resolveApiKey,
+  syncPiExtension,
+  syncPiModelsJson,
+} from "../config";
+import {
+  MONK_BASE_URL,
+  getMonkConfigFile,
+  getPiModelsFile,
+  getPiMonkExtensionFile,
+} from "../constants";
 import { validateApiKey } from "../monk-api";
 import { detectPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, maskKey, printBanner } from "../ui";
@@ -81,7 +91,21 @@ export async function doctorCommand(): Promise<void> {
     logSuccess(`Pi 配置文件: 创建完成`);
   }
 
-  // 6. Network connectivity to Monk
+  // 6. Monk Native Extension Check
+  const extFile = getPiMonkExtensionFile();
+  if (fs.existsSync(extFile)) {
+    logSuccess(`Pi 原生扩展: ${pc.bold("已安装")} (/monk 指令、状态栏与溢出自动重试就绪)`);
+  } else {
+    logWarn(`Pi 原生扩展: 未安装，正在为您自动部署...`);
+    const extRes = syncPiExtension();
+    if (extRes.success) {
+      logSuccess(`Pi 原生扩展: 部署完成`);
+    } else {
+      logError(`Pi 原生扩展部署失败: ${extRes.error}`);
+    }
+  }
+
+  // 7. Network connectivity to Monk
   if (key) {
     process.stdout.write(`  ${pc.dim("⏳ 正在探测与 monk.party 接口的连通性...")} `);
     const val = await validateApiKey(key);

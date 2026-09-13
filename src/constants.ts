@@ -55,3 +55,12 @@ export function getPiModelsFile(): string {
 export function getPiSettingsFile(): string {
   return path.join(getPiHomeDir(), "settings.json");
 }
+
+export function getPiExtensionsDir(): string {
+  return path.join(getPiHomeDir(), "extensions");
+}
+
+export function getPiMonkExtensionFile(): string {
+  return path.join(getPiExtensionsDir(), "monk.ts");
+}
+

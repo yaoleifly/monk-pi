@@ -1,4 +1,4 @@
-import { getDefaultModel, resolveApiKey, syncPiModelsJson } from "../config";
+import { getDefaultModel, resolveApiKey, syncPiExtension, syncPiModelsJson } from "../config";
 import { detectPi, installPi, launchPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, promptInstallPi } from "../ui";
 import { loginCommand } from "./login";
@@ -37,8 +37,9 @@ export async function runCommand(passthroughArgs: string[]): Promise<number> {
     return 1;
   }
 
-  // 3. Ensure Pi's models.json has the latest optimized Monk provider settings
+  // 3. Ensure Pi's models.json & native extension are up-to-date
   syncPiModelsJson(key);
+  syncPiExtension();
 
   // 4. Resolve default model
   const defaultModel = getDefaultModel();

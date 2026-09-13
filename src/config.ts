@@ -7,9 +7,12 @@ import {
   MonkModelId,
   getMonkConfigFile,
   getMonkHomeDir,
+  getPiExtensionsDir,
   getPiHomeDir,
   getPiModelsFile,
+  getPiMonkExtensionFile,
 } from "./constants";
+import { MONK_EXTENSION_CODE } from "./extension/code";
 
 export interface MonkLocalConfig {
   apiKey?: string;
@@ -136,6 +139,29 @@ export function syncPiModelsJson(apiKey?: string): { success: boolean; path: str
     return {
       success: false,
       path: piModelsFile,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Safely writes or updates the Monk native extension in ~/.pi/agent/extensions/monk.ts
+ */
+export function syncPiExtension(): { success: boolean; path: string; error?: string } {
+  const extDir = getPiExtensionsDir();
+  const extFile = getPiMonkExtensionFile();
+
+  try {
+    if (!fs.existsSync(extDir)) {
+      fs.mkdirSync(extDir, { recursive: true });
+    }
+
+    fs.writeFileSync(extFile, MONK_EXTENSION_CODE.trim() + "\n", "utf-8");
+    return { success: true, path: extFile };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      path: extFile,
       error: err instanceof Error ? err.message : String(err),
     };
   }

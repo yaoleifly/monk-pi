@@ -74,12 +74,28 @@ monk-pi --model monk "帮我设计一套分布式系统的架构方案"
 
 ## 🧰 专属管理命令
 
+### 终端 CLI 指令
 | 命令 | 说明 |
 | :--- | :--- |
 | `monk-pi login` (或 `auth`) | 交互式配置或更新 Monk API Key，并自动同步至 Pi |
 | `monk-pi status` (或 `check`) | 检测 API 网络延迟、认证有效性及推演通道 |
 | `monk-pi model [name]` | 查看或切换默认主力模型 (`monk-coding` / `monk-fast` / `monk`) |
 | `monk-pi doctor` | 一键诊断 Node、Pi 运行时、配置文件健康度与网络状况 |
+
+### TUI 内部 Slash 指令 (`/monk`)
+在交互式编码过程中，随时输入 `/monk` 即可呼出 Monk 专属控制菜单：
+- `/monk`：呼出图形化快捷选择菜单
+- `/monk model`：在当前会话中秒级免重启切换主力模型 (`monk-coding` / `monk-fast` / `monk`)
+- `/monk ping`：实时测试当前 Monk API 连接与端到端延迟
+- `/monk account`：查询用量与账号到期状态
+
+---
+
+## 🎨 原生 TUI 状态栏与上下文溢出自动恢复
+
+Monk-Pi 自动为 Pi 部署原生扩展 (`~/.pi/agent/extensions/monk.ts`)：
+1. **底部状态栏 (Footer Status)**：实时显示当前激活的 Monk 模型、1M 上下文标识以及 Turn 轮次状态。
+2. **上下文溢出自动恢复 (Compaction Recovery)**：在超长代码重构会话中，智能拦截 Monk 上游的 Token/Context 溢出异常，自动标准化为 Pi 识别的溢出信号，**无感触发智能压缩与自动重试**，杜绝会话意外中断。
 
 ---
 
@@ -137,10 +153,10 @@ monk-pi --model monk "帮我设计一套分布式系统的架构方案"
   - [x] Pi 运行时环境检测与自动注入
   - [x] `status` / `doctor` / `model` 诊断指令
   - [x] 完整参数透传与 TTY 会话继承
-- [ ] **Phase 2: Monk 原生 Pi Extension**
-  - [ ] TUI 底部状态栏展示 Monk 订阅剩余天数与今日用量
-  - [ ] 针对 Monk 代理的上游报错拦截与自动 Context Compaction 重试机制
-  - [ ] `/monk` 专属 Slash 快捷指令
+- [x] **Phase 2: Monk 原生 Pi Extension**
+  - [x] TUI 底部状态栏展示 Monk 状态与活跃模型
+  - [x] 针对 Monk 代理的上游报错拦截与自动 Context Compaction 重试机制
+  - [x] `/monk` 专属 Slash 快捷指令（秒切模型、测速与用量查询）
 - [ ] **Phase 3: 生态共建**
   - [ ] 提交收录至 monk.party 帮助中心客户端推荐列表
 
