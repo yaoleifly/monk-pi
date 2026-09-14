@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import pc from "picocolors";
+import { autoFixCommand } from "./commands/auto-fix";
 import { doctorCommand } from "./commands/doctor";
 import { loginCommand } from "./commands/login";
 import { modelCommand } from "./commands/model";
@@ -24,9 +25,17 @@ const SUBCOMMANDS = new Set([
   "doctor",
   "resume",
   "history",
+  "run",
+  "exec",
 ]);
 
 async function main() {
+  // Handle run / exec auto-fix command directly (avoids CLI flag collisions)
+  if (firstArg === "run" || firstArg === "exec") {
+    const exitCode = await autoFixCommand(rawArgs.slice(1));
+    process.exit(exitCode);
+  }
+
   // If first argument is one of the dedicated subcommands
   if (firstArg && SUBCOMMANDS.has(firstArg)) {
     const program = new Command();
@@ -89,6 +98,12 @@ async function main() {
     process.exit(exitCode);
   }
 
+  // Handle run / exec auto-fix command
+  if (firstArg === "run" || firstArg === "exec") {
+    const exitCode = await autoFixCommand(rawArgs.slice(1));
+    process.exit(exitCode);
+  }
+
   // Handle explicit help flag
   if (firstArg === "--help" || firstArg === "-h") {
     printBanner();
@@ -115,7 +130,12 @@ async function main() {
     console.log(`    ${pc.dim("# 可视化浏览并恢复以往历史任务")}`);
     console.log(`    ${pc.cyan("monk-pi -r (或 monk-pi resume)")}`);
     console.log();
+    console.log(`    ${pc.dim("# 监控命令运行并享受报错一键自愈")}`);
+    console.log(`    ${pc.cyan('monk-pi run "npm run build"')}`);
+    console.log(`    ${pc.cyan('monk-pi run "npm test"')}`);
+    console.log();
     console.log(`  ${pc.bold("专属管理指令:")}`);
+    console.log(`    ${pc.yellow("monk-pi run <命令>")}            监控命令运行并在报错时一键呼叫 AI 自愈代码 (Auto-Fix)`);
     console.log(`    ${pc.yellow("monk-pi resume (或 -r)")}        可视化浏览并恢复历史会话 (断点续写)`);
     console.log(`    ${pc.yellow("monk-pi login")}                 配置 / 更新 Monk API Key`);
     console.log(`    ${pc.yellow("monk-pi status")}                检测 API 延迟、Key 状态与连通性`);

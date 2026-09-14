@@ -4,7 +4,7 @@ import path from "node:path";
 export const MONK_BASE_URL = "https://monk.party/v1";
 export const MONK_WEBSITE = "https://monk.party";
 export const MONK_ACCOUNT_URL = "https://monk.party/account/";
-export const MONK_PI_VERSION = "0.10.2";
+export const MONK_PI_VERSION = "0.11.0";
 
 export const MONK_MODELS = [
   {

@@ -1,6 +1,6 @@
 {
   "name": "monk-pi",
-  "version": "0.10.2",
+  "version": "0.11.0",
   "description": "Zero-config harness for running Pi Coding Agent with Monk API (monk.party)",
   "type": "module",
   "bin": "./dist/cli.js",
