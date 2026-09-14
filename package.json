@@ -3,7 +3,9 @@
   "version": "0.11.0",
   "description": "Zero-config harness for running Pi Coding Agent with Monk API (monk.party)",
   "type": "module",
-  "bin": "./dist/cli.js",
+  "bin": {
+    "monk-pi": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
