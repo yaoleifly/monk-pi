@@ -16,18 +16,29 @@
 
 ## 🚀 快速开始
 
-### 1. 一键运行 (推荐)
+### 1. 快速安装与运行
 
-无需全局安装，直接通过 `npx` 启动：
-
+#### 方式 A：纯免安装直接运行 (推荐)
+无需全局安装任何环境，直接通过 `npx` 启动：
 ```bash
 npx monk-pi
 ```
 
-或者全局安装命令：
+#### 方式 B：使用 Homebrew 安装 (macOS / Linux 首选)
+Homebrew 会**自动帮你处理并安装 Node.js 依赖**（完全无需担心电脑缺少环境）：
+```bash
+brew install yaoleifly/tap/monk-pi
+```
 
+#### 方式 C：通过 npm / pnpm / bun 全局安装
 ```bash
 npm install -g monk-pi
+# 或者使用 bun (最快)
+bun add -g monk-pi
+```
+
+安装完成后，在任意项目目录下直接输入：
+```bash
 monk-pi
 ```
 
