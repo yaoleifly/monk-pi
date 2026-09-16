@@ -37,8 +37,10 @@ npm install -g monk-pi
 bun add -g monk-pi
 ```
 
-安装完成后，在任意项目目录下直接输入：
+安装完成后，在任意项目目录下直接输入（已支持超短别名 `mp`）：
 ```bash
+mp
+# 或者
 monk-pi
 ```
 
@@ -54,17 +56,19 @@ monk-pi
 ### 1. 日常交互式编程
 
 ```bash
-# 直接进入交互式编码 Agent (默认使用 monk-coding)
+# 直接进入交互式编码 Agent (推荐使用超短别名 mp)
+mp
+# 或者标准命令
 monk-pi
 
 # 带着初始任务进入
-monk-pi "重构当前目录下的鉴权模块，补充单元测试"
+mp "重构当前目录下的鉴权模块，补充单元测试"
 
 # 恢复上一轮历史会话
-monk-pi --continue (或 monk-pi continue)
+mp continue (或 mp -c)
 
 # 可视化浏览并挑选以往历史任务恢复
-monk-pi -r (或 monk-pi resume)
+mp -r (或 mp resume)
 ```
 
 ### 2. 命令行单次执行 (Print Mode)
