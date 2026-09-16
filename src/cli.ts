@@ -9,6 +9,7 @@ import { modelCommand } from "./commands/model";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
 import { statusCommand } from "./commands/status";
+import { updateCommand } from "./commands/update";
 import { MONK_ACCOUNT_URL, MONK_PI_VERSION, MONK_WEBSITE } from "./constants";
 import { printBanner } from "./ui";
 
@@ -27,12 +28,20 @@ const SUBCOMMANDS = new Set([
   "history",
   "run",
   "exec",
+  "update",
+  "upgrade",
 ]);
 
 async function main() {
   // Handle run / exec auto-fix command directly (avoids CLI flag collisions)
   if (firstArg === "run" || firstArg === "exec") {
     const exitCode = await autoFixCommand(rawArgs.slice(1));
+    process.exit(exitCode);
+  }
+
+  // Handle update / upgrade directly
+  if (firstArg === "update" || firstArg === "upgrade") {
+    const exitCode = await updateCommand(rawArgs.includes("--force") || rawArgs.includes("-f"));
     process.exit(exitCode);
   }
 
@@ -98,12 +107,6 @@ async function main() {
     process.exit(exitCode);
   }
 
-  // Handle run / exec auto-fix command
-  if (firstArg === "run" || firstArg === "exec") {
-    const exitCode = await autoFixCommand(rawArgs.slice(1));
-    process.exit(exitCode);
-  }
-
   // Handle explicit help flag
   if (firstArg === "--help" || firstArg === "-h") {
     printBanner();
@@ -135,6 +138,7 @@ async function main() {
     console.log(`    ${pc.cyan('mp run "npm test"')}`);
     console.log();
     console.log(`  ${pc.bold("专属管理指令:")}`);
+    console.log(`    ${pc.yellow("mp update (或 upgrade)")}        一键检查并自动升级至云端最新版本`);
     console.log(`    ${pc.yellow("mp run <命令>")}                 监控命令运行并在报错时一键呼叫 AI 自愈代码 (Auto-Fix)`);
     console.log(`    ${pc.yellow("mp resume (或 -r)")}             可视化浏览并恢复历史会话 (断点续写)`);
     console.log(`    ${pc.yellow("mp login")}                      配置 / 更新 Monk API Key`);
