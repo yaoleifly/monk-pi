@@ -71,7 +71,7 @@ async function main() {
 
     program
       .command("model [name]")
-      .description("切换默认主力模型 (monk-coding / monk-fast / monk)")
+      .description("切换默认主力模型 (monk-coding / monk-fast / monk / monk-free)")
       .action(async (name?: string) => {
         await modelCommand(name);
       });
@@ -111,7 +111,7 @@ async function main() {
   if (firstArg === "--help" || firstArg === "-h") {
     printBanner();
     console.log(`  ${pc.bold("用法:")}`);
-    console.log(`    ${pc.yellow("monk-pi")} (或 ${pc.yellow("mp")})             进入交互式编码模式 (默认使用 monk-coding)`);
+    console.log(`    ${pc.yellow("monk-pi")} (或 ${pc.yellow("mp")})             进入交互式编码模式 (默认使用 monk-coding，协议 OpenAI)`);
     console.log(`    ${pc.yellow("monk-pi")} [选项/提示词...]        传递指令或文件给 Pi`);
     console.log();
     console.log(`  ${pc.bold("示例:")}`);

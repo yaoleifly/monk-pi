@@ -105,7 +105,7 @@ export async function validateApiKey(
  * Monk 上游即使对非流式请求也可能返回 text/event-stream，正文末尾粘连 `data: [DONE]`，
  * 直接 response.json() 会抛 "Unexpected non-whitespace character after JSON"。
  */
-function extractFirstJson(text: string): {
+export function extractFirstJson(text: string): {
   choices?: Array<{ message?: { content?: string } }>;
   error?: { message?: string };
 } {
