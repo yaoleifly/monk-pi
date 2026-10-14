@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import spawn from "cross-spawn";
 import pc from "picocolors";
+import { MIN_NODE_VERSION } from "./constants";
+import { compareVersions } from "./semver";
 import { logError, logInfo, logSuccess, logWarn } from "./ui";
 
 export type PiBinaryType = "global" | "local" | "bundled" | "missing";
@@ -173,11 +175,21 @@ export interface LaunchPiOptions {
 /**
  * Launches Pi with Monk provider & model flags, passing through all user arguments
  */
-export function launchPi(options: LaunchPiOptions): number {
+function hasCliFlag(args: string[], names: string[]): boolean {
+  return args.some((arg) => names.some((name) => arg === name || arg.startsWith(`${name}=`)));
+}
+
+export function launchPi(options: LaunchPiOptions): Promise<number> {
   const resolved = resolvePiBinary();
   if (resolved.type === "missing") {
     logError("未找到可用的 Pi 核心运行环境。");
-    return 1;
+    return Promise.resolve(1);
+  }
+
+  if (compareVersions(process.versions.node, MIN_NODE_VERSION) < 0) {
+    logWarn(
+      `当前 Node ${process.version} 低于 Pi 要求的 ${MIN_NODE_VERSION}。若启动失败，请先升级 Node。`
+    );
   }
 
   const { apiKey, defaultModel, passthroughArgs } = options;
@@ -185,10 +197,8 @@ export function launchPi(options: LaunchPiOptions): number {
   const extraArgs: string[] = [];
 
   // Check if user already passed --provider or --model
-  const hasProvider = passthroughArgs.includes("--provider");
-  const hasModel = passthroughArgs.some((arg, idx) => {
-    return arg === "--model" || arg === "-m" || passthroughArgs[idx - 1] === "--model";
-  });
+  const hasProvider = hasCliFlag(passthroughArgs, ["--provider"]);
+  const hasModel = hasCliFlag(passthroughArgs, ["--model", "-m"]);
 
   if (!hasProvider && !hasModel) {
     extraArgs.push("--provider", "monk", "--model", defaultModel);
@@ -227,5 +237,5 @@ export function launchPi(options: LaunchPiOptions): number {
       logError(`启动 Pi 发生错误: ${err.message}`);
       resolve(1);
     });
-  }) as unknown as number;
+  });
 }

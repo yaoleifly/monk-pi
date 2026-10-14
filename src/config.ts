@@ -14,6 +14,8 @@ import {
   getPiMonkExtensionFile,
 } from "./constants";
 
+export const PI_MODELS_SCHEMA = "https://pi.dev/schemas/models.schema.json";
+
 export interface MonkLocalConfig {
   apiKey?: string;
   defaultModel?: MonkModelId;
@@ -105,32 +107,11 @@ export function syncPiModelsJson(apiKey?: string): { success: boolean; path: str
       }
     }
 
-    const monkProviderConfig = {
-      name: "Monk",
-      baseUrl: MONK_BASE_URL,
-      api: "openai-completions",
-      apiKey: apiKey && !apiKey.startsWith("$") ? apiKey : "$MONK_API_KEY",
-      compat: {
-        supportsDeveloperRole: false,
-        maxTokensField: "max_tokens",
-        requiresToolResultName: true,
-      },
-      models: MONK_MODELS.map((m) => ({
-        id: m.id,
-        name: m.name,
-        reasoning: m.reasoning,
-        input: ["text"],
-        contextWindow: m.contextWindow,
-        maxTokens: m.maxTokens,
-        cost: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-        },
-      })),
-    };
+    const monkProviderConfig = buildMonkProviderConfig(apiKey);
 
+    if (typeof modelsData.$schema !== "string") {
+      modelsData.$schema = PI_MODELS_SCHEMA;
+    }
     modelsData.providers.monk = monkProviderConfig;
 
     fs.writeFileSync(piModelsFile, JSON.stringify(modelsData, null, 2), "utf-8");
@@ -142,6 +123,57 @@ export function syncPiModelsJson(apiKey?: string): { success: boolean; path: str
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+export function buildMonkProviderConfig(apiKey?: string) {
+  return {
+    name: "Monk",
+    baseUrl: MONK_BASE_URL,
+    api: "openai-completions",
+    apiKey: apiKey && !apiKey.startsWith("$") ? apiKey : "$MONK_API_KEY",
+    compat: {
+      supportsDeveloperRole: false,
+      maxTokensField: "max_tokens",
+      requiresToolResultName: true,
+    },
+    models: MONK_MODELS.map((m) => ({
+      id: m.id,
+      name: m.name,
+      reasoning: m.reasoning,
+      input: ["text", "image"] as const,
+      contextWindow: m.contextWindow,
+      maxTokens: m.maxTokens,
+      cost: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+      },
+    })),
+  };
+}
+
+/**
+ * True when an existing Pi provider block already matches the current Monk service.
+ */
+export function isMonkProviderCurrent(provider: unknown): boolean {
+  if (!provider || typeof provider !== "object") return false;
+  const monk = provider as {
+    api?: string;
+    baseUrl?: string;
+    compat?: { supportsDeveloperRole?: boolean; maxTokensField?: string };
+    models?: Array<{ id?: string; input?: string[] }>;
+  };
+  const compatOk =
+    monk.compat?.supportsDeveloperRole === false && monk.compat?.maxTokensField === "max_tokens";
+  const endpointOk = monk.api === "openai-completions" && monk.baseUrl === MONK_BASE_URL;
+  const models = Array.isArray(monk.models) ? monk.models : [];
+  const ids = models.map((model) => model.id);
+  const modelsOk =
+    ids.length === MONK_MODELS.length &&
+    MONK_MODELS.every((model) => ids.includes(model.id)) &&
+    models.every((model) => Array.isArray(model.input) && model.input.includes("text") && model.input.includes("image"));
+  return compatOk && endpointOk && modelsOk;
 }
 
 /**

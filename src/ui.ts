@@ -1,7 +1,15 @@
 import spawn from "cross-spawn";
 import pc from "picocolors";
 import { password, select, confirm, input } from "@inquirer/prompts";
-import { MONK_ACCOUNT_URL, MONK_MODELS, MONK_WEBSITE, MonkModelId } from "./constants";
+import {
+  DEFAULT_MONK_MODEL,
+  MONK_ACCOUNT_URL,
+  MONK_MODELS,
+  MONK_PRICE_SUMMARY,
+  MONK_WEBSITE,
+  MonkModelId,
+  isMonkApiKeyShape,
+} from "./constants";
 
 export function openBrowser(url: string): boolean {
   try {
@@ -21,17 +29,19 @@ export function openBrowser(url: string): boolean {
 }
 
 export function printBanner(): void {
-  const line = pc.dim("─".repeat(54));
+  const colors = [pc.yellow, pc.cyan, pc.magenta, pc.green];
+  const modelLine = MONK_MODELS.map((model, index) => colors[index % colors.length](model.id)).join(
+    ` ${pc.dim("|")} `
+  );
+  const line = pc.dim("─".repeat(62));
   console.log();
   console.log(pc.bold(pc.yellow("  █▀▄▀█ █▀█ █▄░█ █▄▀") + "   ✕   " + pc.cyan("█▀█ █")));
   console.log(pc.bold(pc.yellow("  █░▀░█ █▄█ █░▀█ █░█") + "       " + pc.cyan("█▀▀ █")));
   console.log(line);
   console.log(
-    `  ${pc.bold("Monk × Pi Harness")} ${pc.dim("·")} ${pc.green("OpenAI-Compatible Fusion Agent")}`
+    `  ${pc.bold("Monk × Pi Harness")} ${pc.dim("·")} ${pc.green("OpenAI Chat Completions")}`
   );
-  console.log(
-    `  ${pc.dim("模型:")} ${pc.yellow("monk-coding")} ${pc.dim("|")} ${pc.cyan("monk-fast")} ${pc.dim("|")} ${pc.magenta("monk")}`
-  );
+  console.log(`  ${pc.dim("模型:")} ${modelLine}`);
   console.log(line);
   console.log();
 }
@@ -63,7 +73,7 @@ export async function promptForApiKey(currentKey?: string): Promise<string> {
   console.log();
   console.log(`  ${pc.bold("欢迎使用 Monk × Pi 编码伴侣！")}`);
   console.log(
-    `  ${pc.dim("Monk 专为 Agent 提供极速高吞吐融合模型 (月卡 ¥30 / 100万 Token 上下文)")}`
+    `  ${pc.dim(`Monk 专为 Agent 提供融合模型 (${MONK_PRICE_SUMMARY} · 100万 Token 上下文)`)}`
   );
   console.log();
 
@@ -130,8 +140,8 @@ export async function promptForApiKey(currentKey?: string): Promise<string> {
       const trimmed = val.trim();
       if (!trimmed && currentKey) return true;
       if (!trimmed) return "API Key 不能为空";
-      if (!trimmed.startsWith("sk-")) {
-        return "Key 格式通常以 sk- 开头，请确认复制完整";
+      if (!isMonkApiKeyShape(trimmed)) {
+        return "Key 应以 sk-monk- 开头，请确认复制完整";
       }
       return true;
     },
@@ -154,7 +164,7 @@ export async function promptSelectModel(currentModel?: MonkModelId): Promise<Mon
   const selected = await select({
     message: "请选择默认主力模型:",
     choices,
-    default: currentModel || "monk-coding",
+    default: currentModel || DEFAULT_MONK_MODEL,
   });
 
   return selected as MonkModelId;

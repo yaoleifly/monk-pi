@@ -2,17 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import pc from "picocolors";
 import {
-  getDefaultModel,
+  isMonkProviderCurrent,
   resolveApiKey,
   syncPiExtension,
   syncPiModelsJson,
 } from "../config";
-import {
-  MONK_BASE_URL,
-  getMonkConfigFile,
-  getPiModelsFile,
-  getPiMonkExtensionFile,
-} from "../constants";
+import { MIN_NODE_VERSION, getPiModelsFile } from "../constants";
+import { compareVersions } from "../semver";
 import { validateApiKey } from "../monk-api";
 import { detectPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, maskKey, printBanner } from "../ui";
@@ -26,12 +22,16 @@ export async function doctorCommand(): Promise<void> {
 
   // 1. Node.js Check
   const nodeVersion = process.version;
-  const major = parseInt(nodeVersion.slice(1).split(".")[0], 10);
-  if (major >= 18) {
-    logSuccess(`Node.js 版本: ${pc.bold(nodeVersion)} (满足 >= 18 要求)`);
+  if (compareVersions(nodeVersion, MIN_NODE_VERSION) >= 0) {
+    logSuccess(`Node.js 版本: ${pc.bold(nodeVersion)} (满足 >= ${MIN_NODE_VERSION} 要求)`);
+  } else if (compareVersions(nodeVersion, "22.0.0") >= 0) {
+    hasIssue = true;
+    logWarn(
+      `Node.js 版本: ${pc.bold(nodeVersion)} (Pi 1.2 需要 >= ${MIN_NODE_VERSION}，当前版本不受支持)`
+    );
   } else {
     hasIssue = true;
-    logError(`Node.js 版本: ${pc.bold(nodeVersion)} (过低，请升级到 Node 18+)`);
+    logError(`Node.js 版本: ${pc.bold(nodeVersion)} (过低，请升级到 Node ${MIN_NODE_VERSION}+)`);
   }
 
   // 2. OS Check
@@ -66,13 +66,10 @@ export async function doctorCommand(): Promise<void> {
       const data = JSON.parse(fs.readFileSync(modelsFile, "utf-8"));
       const monk = data?.providers?.monk;
       if (monk) {
-        const hasCompat =
-          monk.compat?.supportsDeveloperRole === false &&
-          monk.compat?.maxTokensField === "max_tokens";
-        if (hasCompat) {
-          logSuccess(`Pi 配置文件: ${pc.bold("已配置 Monk 专属优化兼容参数")}`);
+        if (isMonkProviderCurrent(monk)) {
+          logSuccess(`Pi 配置文件: ${pc.bold("已配置当前 Monk 模型与 OpenAI 兼容参数")}`);
         } else {
-          logWarn(`Pi 配置文件: 存在 Monk 配置，但缺少最佳 compat 参数`);
+          logWarn(`Pi 配置文件: Monk 配置已过期（模型列表、协议或 compat 与当前服务不一致）`);
           console.log(`    ${pc.dim("正在为您自动纠正...")}`);
           syncPiModelsJson(key);
           logSuccess(`Pi 配置文件: 已自动修复优化`);

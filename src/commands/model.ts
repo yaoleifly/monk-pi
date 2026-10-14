@@ -1,6 +1,6 @@
 import pc from "picocolors";
 import { getDefaultModel, saveMonkConfig } from "../config";
-import { MONK_MODELS, MonkModelId } from "../constants";
+import { MONK_MODELS, matchMonkModel } from "../constants";
 import { logInfo, logSuccess, logWarn, printBanner, promptSelectModel } from "../ui";
 
 export async function modelCommand(targetModel?: string): Promise<void> {
@@ -8,9 +8,7 @@ export async function modelCommand(targetModel?: string): Promise<void> {
   const currentModel = getDefaultModel();
 
   if (targetModel) {
-    const matched = MONK_MODELS.find(
-      (m) => m.id === targetModel || m.id.endsWith(targetModel)
-    );
+    const matched = matchMonkModel(targetModel);
     if (!matched) {
       logWarn(`未知模型: "${targetModel}"`);
       logInfo(`支持的模型列表: ${MONK_MODELS.map((m) => m.id).join(", ")}`);

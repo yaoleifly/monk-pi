@@ -11,7 +11,8 @@ import type {
 const MONK_MODELS = [
   { id: "monk-coding", label: "monk-coding (代码主力 - 推荐 · 深度工具调用)" },
   { id: "monk-fast", label: "monk-fast (极速推理 · 快速问答与轻量任务)" },
-  { id: "monk", label: "monk (融合旗舰 · 质量优先与综合推理)" },
+  { id: "monk", label: "monk (质量优先 · 默认融合模型)" },
+  { id: "monk-free", label: "monk-free (付费 Key 可用 · 额外融合通道)" },
 ];
 
 export const PRO_TIPS = [
@@ -25,16 +26,38 @@ export const PRO_TIPS = [
   "终端输入 monk-pi -r 可视化恢复以往任意历史任务断点续写",
 ];
 
-const OVERFLOW_PATTERNS = [
-  /context.*length/i,
-  /maximum.*tokens/i,
-  /token.*limit/i,
-  /too many tokens/i,
-  /prompt.*too long/i,
-  /request.*too large/i,
-  /context_window_exceeded/i,
+export const OVERFLOW_PATTERNS = [
+  /context[_ ]length[_ ]exceeded/i,
+  /context window exceeds limit/i,
+  /exceeds the context window/i,
+  /exceeds (?:the )?(?:model'?s )?maximum context length/i,
   /exceed.*context/i,
+  /prompt (?:is )?too long/i,
+  /prompt exceeds max length/i,
+  /request_too_large/i,
+  /request.*too large/i,
+  /input token count.*exceeds the maximum/i,
+  /maximum context length is \d+ tokens/i,
+  /range of input length should be/i,
+  /too large for model with \d+ maximum context length/i,
+  /the input \(\d+ tokens\) is longer than the model'?s context length/i,
+  /model_context_window_exceeded/i,
 ];
+
+/** 429 / 限流不是上下文溢出，不能改写成 compaction 信号。 */
+export const NON_OVERFLOW_PATTERNS = [
+  /rate limit/i,
+  /too many requests/i,
+  /\b429\b/,
+  /retry-after/i,
+  /throttl/i,
+];
+
+export function isMonkContextOverflow(errorMessage: string): boolean {
+  if (!errorMessage || errorMessage.includes("context_length_exceeded")) return false;
+  if (NON_OVERFLOW_PATTERNS.some((pattern) => pattern.test(errorMessage))) return false;
+  return OVERFLOW_PATTERNS.some((pattern) => pattern.test(errorMessage));
+}
 
 export const CHINESE_ENGINEERING_PROMPT = `
 # 中文工程交互规范 (Monk Chinese Engineering Persona)
@@ -327,10 +350,7 @@ export default function monkExtension(pi: ExtensionAPI) {
     if (!isMonk) return;
 
     const errorMsg = message.errorMessage || "";
-    if (errorMsg.includes("context_length_exceeded")) return;
-
-    const isOverflow = OVERFLOW_PATTERNS.some((p) => p.test(errorMsg));
-    if (isOverflow) {
+    if (isMonkContextOverflow(errorMsg)) {
       ctx.ui?.notify(
         "Monk: 检测到上下文超长，已自动重写错误并触发智能压缩 (Compaction) 重试...",
         "warning"
@@ -690,7 +710,15 @@ async function handleCommitCommand(
     extraArgs ? `\n附加要求：${extraArgs}` : "",
   ].join("\n");
 
-  pi.sendUserMessage(prompt);
+  deliverUserPrompt(pi, ctx, prompt);
+}
+
+function deliverUserPrompt(pi: ExtensionAPI, ctx: ExtensionCommandContext, prompt: string) {
+  if (ctx.isIdle()) {
+    pi.sendUserMessage(prompt);
+    return;
+  }
+  pi.sendUserMessage(prompt, { deliverAs: "followUp" });
 }
 
 async function handleReviewCommand(
@@ -713,7 +741,7 @@ async function handleReviewCommand(
       "3. 语言保持客观专业，突出高价值修改意见。",
     ].join("\n");
 
-    pi.sendUserMessage(prompt);
+    deliverUserPrompt(pi, ctx, prompt);
     return;
   }
 
@@ -742,7 +770,7 @@ async function handleReviewCommand(
     "3. 如果改动整体质量优秀，请明确指出亮点并予以肯定。",
   ].join("\n");
 
-  pi.sendUserMessage(prompt);
+  deliverUserPrompt(pi, ctx, prompt);
 }
 
 async function handleModelSwitch(pi: ExtensionAPI, ctx: ExtensionCommandContext) {

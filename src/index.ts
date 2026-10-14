@@ -8,3 +8,5 @@ export * from "./commands/status";
 export * from "./commands/model";
 export * from "./commands/doctor";
 export * from "./commands/run";
+export * from "./commands/auto-fix";
+export * from "./commands/update";

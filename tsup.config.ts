@@ -7,7 +7,7 @@ export default defineConfig({
     index: "src/index.ts",
   },
   format: ["esm"],
-  target: "node18",
+  target: "node22",
   clean: true,
   dts: true,
   onSuccess: async () => {
