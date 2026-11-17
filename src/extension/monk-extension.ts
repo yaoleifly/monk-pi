@@ -13,6 +13,7 @@ const MONK_MODELS = [
   { id: "monk-fast", label: "monk-fast (极速推理 · 快速问答与轻量任务)" },
   { id: "monk", label: "monk (质量优先 · 默认融合模型)" },
   { id: "monk-free", label: "monk-free (付费 Key 可用 · 额外融合通道)" },
+  { id: "monk-opus", label: "monk-opus (Claude Opus 5.5 · Opus 钱包按量)" },
 ];
 
 export const PRO_TIPS = [

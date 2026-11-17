@@ -7,9 +7,9 @@
 
 ## 💡 为什么需要 Monk-Pi？
 
-- **极低门槛**：官方旗舰模型价格高昂且易受网络限制。Monk 融合顶尖 Flash 模型，提供 100 万 Token 上下文与 Agent 原生工具调用能力。付费 Key（`sk-monk-*`）可调用 `monk`、`monk-fast`、`monk-coding` 与 `monk-free`。
+- **极低门槛**：官方旗舰模型价格高昂且易受网络限制。Monk 融合顶尖 Flash 模型，提供 100 万 Token 上下文与 Agent 原生工具调用能力。付费 Key（`sk-monk-*`）可调用 `monk`、`monk-fast`、`monk-coding`、`monk-free` 与 `monk-opus`（Claude Opus 5.5，走 Opus 钱包按量计费）。
 - **零配置接入**：彻底告别繁琐的手写 `models.json` 和 `compat` 参数配置。首次启动自动完成密钥检验与环境注入。协议锁定 OpenAI Chat Completions，不会走 Anthropic 预设。
-- **专为编码调优**：预置代码主力模型（`monk-coding`）、极速推理模型（`monk-fast`）、质量优先默认模型（`monk`）以及付费 Key 均可调用的 `monk-free`，并自动应用最佳 `max_tokens` 与角色兼容补丁。
+- **专为编码调优**：预置代码主力模型（`monk-coding`）、极速推理模型（`monk-fast`）、质量优先默认模型（`monk`）、付费 Key 均可调用的 `monk-free`，以及旗舰 `monk-opus`（Claude Opus 5.5，按量计费），并自动应用最佳 `max_tokens` 与角色兼容补丁。
 - **完全兼容原生 Pi**：保留 Pi 原生的所有命令行参数、会话管理、TUI 快捷键和插件生态。
 
 ---
@@ -94,6 +94,9 @@ monk-pi --model monk "帮我设计一套分布式系统的架构方案"
 
 # 使用付费 Key 均可调用的额外通道
 monk-pi --model monk-free "帮我看一下这个报错"
+
+# 使用旗舰 Claude Opus 5.5（需先在用户中心给 Opus 钱包充值）
+monk-pi --model monk-opus "攻坚这个分布式一致性问题"
 ```
 
 ---
@@ -108,7 +111,7 @@ monk-pi --model monk-free "帮我看一下这个报错"
 | `monk-pi resume` (或 `mp -r`) | 可视化交互式浏览历史会话列表，带相对时间和摘要快速恢复 (断点续写) |
 | `monk-pi login` (或 `auth`) | 交互式配置或更新 Monk API Key，并自动同步至 Pi |
 | `monk-pi status` (或 `check`) | 检测 API 网络延迟、认证有效性及推演通道 |
-| `monk-pi model [name]` | 查看或切换默认主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free`) |
+| `monk-pi model [name]` | 查看或切换默认主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free` / `monk-opus`) |
 | `monk-pi doctor` | 一键诊断 Node、Pi 运行时、配置文件健康度与网络状况 |
 
 ### TUI 内部 Slash 指令
@@ -118,7 +121,7 @@ monk-pi --model monk-free "帮我看一下这个报错"
 - **/review** [路径]：对当前 Git 改动或指定源代码文件进行四维度（缺陷/性能/架构/重构片段）专业中文代码审查
 - **/tips**：查看 Monk-Pi 精选实用极客技巧清单，随时查阅进阶用法
 - **/monk**：呼出图形化快捷控制菜单（包含撤销改动、切模型、测速、用量查询等）
-- **/monk model**：在当前会话中秒级免重启切换主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free`)
+- **/monk model**：在当前会话中秒级免重启切换主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free` / `monk-opus`)
 - **/monk cn** (或 `/monk prompt`)：一键开启/关闭中文工程精炼系统提示词（零客套·行动优先）
 - **/monk ping**：实时测试当前 Monk API 连接与端到端延迟
 - **/monk account**：查询用量与账号到期状态
@@ -253,6 +256,13 @@ Monk-Pi 自动为 Pi 部署原生扩展 (`~/.pi/agent/extensions/monk.ts`)：
           "reasoning": true,
           "contextWindow": 1000000,
           "maxTokens": 64000
+        },
+        {
+          "id": "monk-opus",
+          "name": "Monk Opus (Claude Opus 5.5 · Opus 钱包按量)",
+          "reasoning": true,
+          "contextWindow": 1000000,
+          "maxTokens": 64000
         }
       ]
     }
@@ -260,7 +270,7 @@ Monk-Pi 自动为 Pi 部署原生扩展 (`~/.pi/agent/extensions/monk.ts`)：
 }
 ```
 
-四个模型都声明了文本与图像输入（OpenAI `image_url`）。Base URL 必须是 `https://monk.party/v1`，`api` 必须是 `openai-completions`。不要改成 Anthropic / DeepSeek 预设，也不要探测 `/anthropic/v1/messages`。
+五个模型都声明了文本与图像输入（OpenAI `image_url`）。`monk-opus` 需先在[用户中心](https://monk.party/me/)给 Opus 钱包充值，否则返回 402。Base URL 必须是 `https://monk.party/v1`，`api` 必须是 `openai-completions`。不要改成 Anthropic / DeepSeek 预设，也不要探测 `/anthropic/v1/messages`。
 
 用量、剩余天数与限额在 [查询页](https://monk.party/account/) 用下单邮箱查看。页面不展示完整 API Key，请从购买邮件找回。
 
@@ -284,10 +294,11 @@ Monk-Pi 自动为 Pi 部署原生扩展 (`~/.pi/agent/extensions/monk.ts`)：
 
 ## 🩺 连不上时先看这里
 
-- 未带 Key 访问 `https://monk.party/v1` 返回 401，这是预期行为。付费 Key 只能调用 `monk`、`monk-fast`、`monk-coding`、`monk-free`；填写 `gpt-4o` / `claude-*` / `deepseek-chat` 会 404。
+- 未带 Key 访问 `https://monk.party/v1` 返回 401，这是预期行为。付费 Key 只能调用 `monk`、`monk-fast`、`monk-coding`、`monk-free`、`monk-opus`（opus 需 Opus 钱包余额）；填写 `gpt-4o` / `claude-*` / `deepseek-chat` 会 404。
 - `both_paths_failed`（OpenAI 200、Anthropic 404）是客户端同时探测了两套协议。Monk 没有 `/anthropic/v1/messages`，把协议锁定为 OpenAI 即可。
 - 429 请遵守响应里的 `Retry-After` 再重试，这是共享池限流，不是服务宕机。
 - 超长工具历史或过大的 `max_tokens` 偶发上游 400 时，缩短上下文或去掉过大的 `max_tokens`。这类 400 不一定会自动换上游。
+- 仍有问题？去 [monk.party/try/](https://monk.party/try/) 在线自检并一键提交带诊断信息的反馈；或发邮件至 support@monk.party（自动诊断并回邮）；TG 用户可直接找 [@monk_feedback_bot](https://t.me/monk_feedback_bot)。
 
 ## 📄 开源许可
 

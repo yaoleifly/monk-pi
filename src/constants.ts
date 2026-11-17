@@ -48,6 +48,14 @@ export const MONK_MODELS = [
     contextWindow: 1000000,
     maxTokens: 64000,
   },
+  {
+    id: "monk-opus",
+    name: "Monk Opus (Claude Opus 5.5 · Opus 钱包按量)",
+    description: "Claude Opus 5.5 旗舰模型，走 Opus 钱包按量扣费（用户中心充值），适合难题推理与长任务",
+    reasoning: true,
+    contextWindow: 1000000,
+    maxTokens: 64000,
+  },
 ] as const;
 
 export type MonkModelId = (typeof MONK_MODELS)[number]["id"];
