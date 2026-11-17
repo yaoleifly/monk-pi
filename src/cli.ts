@@ -71,7 +71,7 @@ async function main() {
 
     program
       .command("model [name]")
-      .description("切换默认主力模型 (monk-coding / monk-fast / monk / monk-free)")
+      .description("切换默认主力模型 (monk-coding / monk-fast / monk / monk-free / monk-opus)")
       .action(async (name?: string) => {
         await modelCommand(name);
       });

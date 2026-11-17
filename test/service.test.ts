@@ -15,7 +15,7 @@ import { isMonkContextOverflow } from "../src/extension/monk-extension.ts";
 import { compareVersions } from "../src/semver.ts";
 
 test("catalog matches the current Monk combos", () => {
-  assert.deepEqual(MONK_MODEL_IDS, ["monk-coding", "monk-fast", "monk", "monk-free"]);
+  assert.deepEqual(MONK_MODEL_IDS, ["monk-coding", "monk-fast", "monk", "monk-free", "monk-opus"]);
   assert.equal(DEFAULT_MONK_MODEL, "monk-coding");
   assert.equal(MONK_BASE_URL, "https://monk.party/v1");
   assert.equal(MONK_ACCOUNT_URL, "https://monk.party/account/");
