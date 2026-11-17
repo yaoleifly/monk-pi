@@ -23,6 +23,8 @@ export const MONK_MODELS = [
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
+    // USD per 1M tokens shown in Pi's cost display. Subscription models are flat-rate → 0.
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   },
   {
     id: "monk-fast",
@@ -31,6 +33,7 @@ export const MONK_MODELS = [
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   },
   {
     id: "monk",
@@ -39,6 +42,7 @@ export const MONK_MODELS = [
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   },
   {
     id: "monk-free",
@@ -47,6 +51,7 @@ export const MONK_MODELS = [
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   },
   {
     id: "monk-opus",
@@ -55,6 +60,8 @@ export const MONK_MODELS = [
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
+    // From https://monk.party/opus/ ($1.20 in / $6.00 out per 1M; cache read/write billed as input).
+    cost: { input: 1.2, output: 6.0, cacheRead: 1.2, cacheWrite: 1.2 },
   },
 ] as const;
 

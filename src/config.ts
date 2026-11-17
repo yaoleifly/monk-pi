@@ -143,12 +143,7 @@ export function buildMonkProviderConfig(apiKey?: string) {
       input: ["text", "image"] as const,
       contextWindow: m.contextWindow,
       maxTokens: m.maxTokens,
-      cost: {
-        input: 0,
-        output: 0,
-        cacheRead: 0,
-        cacheWrite: 0,
-      },
+      cost: m.cost,
     })),
   };
 }
