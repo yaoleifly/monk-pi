@@ -4,7 +4,7 @@ import path from "node:path";
 export const MONK_BASE_URL = "https://monk.party/v1";
 export const MONK_WEBSITE = "https://monk.party";
 export const MONK_ACCOUNT_URL = "https://monk.party/account/";
-export const MONK_PI_VERSION = "0.13.0";
+export const MONK_PI_VERSION = "0.14.0";
 
 /** Pi 1.2 declares this engine. Below it, the bundled runtime is unsupported. */
 export const MIN_NODE_VERSION = "22.19.0";
