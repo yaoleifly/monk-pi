@@ -8,7 +8,7 @@ export const MONK_ACCOUNT_URL = "https://monk.party/account/";
 export const MONK_OPUS_KEYINFO_URL = "https://monk.party/monk-api/opus/key-info";
 /** Opus 钱包充值入口（用户中心）。 */
 export const MONK_OPUS_TOPUP_URL = "https://monk.party/me/#opus";
-export const MONK_PI_VERSION = "0.14.0";
+export const MONK_PI_VERSION = "0.15.0";
 
 /** Pi 1.2 declares this engine. Below it, the bundled runtime is unsupported. */
 export const MIN_NODE_VERSION = "22.19.0";

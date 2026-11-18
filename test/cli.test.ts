@@ -15,7 +15,7 @@ function runCli(args: string[]) {
   });
 }
 
-test("version flag prints 0.14.0", () => {
+test("version flag prints 0.15.0", () => {
   const result = runCli(["--version"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /monk-pi v0\.14\.0/);
