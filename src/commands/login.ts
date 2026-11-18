@@ -47,7 +47,8 @@ export async function loginCommand(): Promise<boolean> {
   }
 
   console.log();
-  logSuccess(`Monk × Pi 就绪！现在您可以直接输入 ${pc.bold(pc.yellow("monk-pi"))} 开始编码。`);
+  logSuccess(`飞船准备就绪！输入 ${pc.bold(pc.yellow("monk-pi"))} 即可出发。`);
+  logInfo(`小贴士: 这把 Key 也能调用 monk-opus（难题推理 · 按量付费），充值路径见 ${pc.dim("https://monk.party/me/#opus")}`);
   console.log();
   return true;
 }

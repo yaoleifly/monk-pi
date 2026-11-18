@@ -110,9 +110,9 @@ monk-pi --model monk-opus "攻坚这个分布式一致性问题"
 | `monk-pi run <命令>` (或 `mp run`) | **监控运行命令**，报错时自动捕获日志并提示一键呼叫 AI 代码自愈 (Auto-Fix) |
 | `monk-pi resume` (或 `mp -r`) | 可视化交互式浏览历史会话列表，带相对时间和摘要快速恢复 (断点续写) |
 | `monk-pi login` (或 `auth`) | 交互式配置或更新 Monk API Key，并自动同步至 Pi |
-| `monk-pi status` (或 `check`) | 检测 API 网络延迟、认证有效性及推演通道 |
-| `monk-pi model [name]` | 查看或切换默认主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free` / `monk-opus`) |
-| `monk-pi doctor` | 一键诊断 Node、Pi 运行时、配置文件健康度与网络状况 |
+| `monk-pi status` (或 `check`) | 检测 API 网络延迟、认证有效性、Opus 钱包信号及推演通道 |
+| `monk-pi model [name]` | 按需求切换默认主力模型（写代码/日常/难题推理…，含 `monk-opus`；选 opus 时自动检查 Opus 钱包余额） |
+| `monk-pi doctor` | 一键诊断 Node、Pi 运行时、配置文件健康度、网络与 Opus 钱包状态 |
 
 ### TUI 内部 Slash 指令
 在交互式编码过程中，随时输入对应指令即可呼出 Monk 专属能力：
@@ -124,7 +124,7 @@ monk-pi --model monk-opus "攻坚这个分布式一致性问题"
 - **/monk model**：在当前会话中秒级免重启切换主力模型 (`monk-coding` / `monk-fast` / `monk` / `monk-free` / `monk-opus`)
 - **/monk cn** (或 `/monk prompt`)：一键开启/关闭中文工程精炼系统提示词（零客套·行动优先）
 - **/monk ping**：实时测试当前 Monk API 连接与端到端延迟
-- **/monk account**：查询用量与账号到期状态
+- **/monk account**：查询 Opus 钱包余额（低余额提醒）、用量与账号到期状态
 
 ---
 

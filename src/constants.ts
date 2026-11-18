@@ -4,6 +4,10 @@ import path from "node:path";
 export const MONK_BASE_URL = "https://monk.party/v1";
 export const MONK_WEBSITE = "https://monk.party";
 export const MONK_ACCOUNT_URL = "https://monk.party/account/";
+/** Key 鉴权的 Opus 钱包查询（2026-11-18 起）：余额 / 今日已扣 / 日限额。 */
+export const MONK_OPUS_KEYINFO_URL = "https://monk.party/monk-api/opus/key-info";
+/** Opus 钱包充值入口（用户中心）。 */
+export const MONK_OPUS_TOPUP_URL = "https://monk.party/me/#opus";
 export const MONK_PI_VERSION = "0.14.0";
 
 /** Pi 1.2 declares this engine. Below it, the bundled runtime is unsupported. */
@@ -20,6 +24,7 @@ export const MONK_MODELS = [
     id: "monk-coding",
     name: "Monk Coding (代码主力 - 推荐)",
     description: "编码与 Agent 工作负载，工具调用优先",
+    useCase: "写代码干活 · 推荐",
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
@@ -30,6 +35,7 @@ export const MONK_MODELS = [
     id: "monk-fast",
     name: "Monk Fast (极速推理)",
     description: "更短更快，适合日常问答、快速代码探索与单文件阅读",
+    useCase: "日常问答 · 极速",
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
@@ -39,6 +45,7 @@ export const MONK_MODELS = [
     id: "monk",
     name: "Monk (质量优先)",
     description: "默认融合模型，综合质量与思考能力优先",
+    useCase: "综合质量优先",
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
@@ -48,6 +55,7 @@ export const MONK_MODELS = [
     id: "monk-free",
     name: "Monk Free (付费 Key 可用)",
     description: "额外融合通道，任意付费 sk-monk-* Key 均可调用",
+    useCase: "额外备用通道",
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,
@@ -57,6 +65,7 @@ export const MONK_MODELS = [
     id: "monk-opus",
     name: "Monk Opus (Claude Opus 5.5 · Opus 钱包按量)",
     description: "Claude Opus 5.5 旗舰模型，走 Opus 钱包按量扣费（用户中心充值），适合难题推理与长任务",
+    useCase: "难题推理 · 按量付费",
     reasoning: true,
     contextWindow: 1000000,
     maxTokens: 64000,

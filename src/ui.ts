@@ -39,7 +39,7 @@ export function printBanner(): void {
   console.log(pc.bold(pc.yellow("  █░▀░█ █▄█ █░▀█ █░█") + "       " + pc.cyan("█▀▀ █")));
   console.log(line);
   console.log(
-    `  ${pc.bold("Monk × Pi Harness")} ${pc.dim("·")} ${pc.green("OpenAI Chat Completions")}`
+    `  ${pc.bold("Monk × Pi Harness")} ${pc.dim("·")} ${pc.green("OpenAI Chat Completions")} ${pc.dim("·")} ${pc.magenta("MONK 宇宙 · Pi 入口")}`
   );
   console.log(`  ${pc.dim("模型:")} ${modelLine}`);
   console.log(line);
@@ -71,9 +71,12 @@ export function logStep(step: number, total: number, msg: string): void {
  */
 export async function promptForApiKey(currentKey?: string): Promise<string> {
   console.log();
-  console.log(`  ${pc.bold("欢迎使用 Monk × Pi 编码伴侣！")}`);
+  console.log(`  ${pc.bold("欢迎登陆 Monk 宇宙的 Pi 星球！")}`);
   console.log(
     `  ${pc.dim(`Monk 专为 Agent 提供融合模型 (${MONK_PRICE_SUMMARY} · 100万 Token 上下文)`)}`
+  );
+  console.log(
+    `  ${pc.dim("同一把 Key 也能调用 monk-opus（Claude Opus 5.5 按量付费），充值即用。")}`
   );
   console.log();
 
@@ -156,13 +159,13 @@ export async function promptForApiKey(currentKey?: string): Promise<string> {
  */
 export async function promptSelectModel(currentModel?: MonkModelId): Promise<MonkModelId> {
   const choices = MONK_MODELS.map((m) => ({
-    name: `${m.name.padEnd(28)} ${pc.dim(m.description)}`,
+    name: `${pc.yellow(m.useCase.padEnd(12))} ${m.id.padEnd(12)} ${pc.dim(m.description)}`,
     value: m.id,
     description: m.description,
   }));
 
   const selected = await select({
-    message: "请选择默认主力模型:",
+    message: "按需求选一个默认主力模型（随时用 `mp model` 切换）:",
     choices,
     default: currentModel || DEFAULT_MONK_MODEL,
   });
