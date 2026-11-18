@@ -9,7 +9,7 @@ import {
 } from "../config";
 import { MIN_NODE_VERSION, getPiModelsFile } from "../constants";
 import { compareVersions } from "../semver";
-import { validateApiKey } from "../monk-api";
+import { fetchOpusKeyInfo, validateApiKey } from "../monk-api";
 import { detectPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, maskKey, printBanner } from "../ui";
 
@@ -111,6 +111,18 @@ export async function doctorCommand(): Promise<void> {
     process.stdout.write("\r" + " ".repeat(50) + "\r");
     if (val.valid) {
       logSuccess(`Monk 连通性: ${pc.green("优秀")} · 延迟 ${val.latencyMs}ms`);
+
+      // 8. Opus wallet reachability (monk-opus is metered; no wallet → 402 surprises)
+      const wallet = await fetchOpusKeyInfo(key);
+      if (wallet.available) {
+        if (!wallet.hasWallet) {
+          logInfo(`Opus 钱包: 未开通 ${pc.dim("(monk-opus 按量付费模型，不充值不影响订阅模型)")}`);
+        } else if (wallet.low || wallet.balance <= 0) {
+          logWarn(`Opus 钱包: 余额 ¥${wallet.balance.toFixed(2)} 偏低，调用 monk-opus 会被拒`);
+        } else {
+          logSuccess(`Opus 钱包: 余额 ¥${wallet.balance.toFixed(2)} ${pc.dim("(monk-opus 可调用)")}`);
+        }
+      }
     } else {
       hasIssue = true;
       logError(`Monk 连通性异常: ${val.error}`);

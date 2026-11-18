@@ -1,9 +1,9 @@
 import pc from "picocolors";
 import { getDefaultModel, resolveApiKey } from "../config";
-import { testChatCompletion, validateApiKey } from "../monk-api";
+import { fetchOpusKeyInfo, testChatCompletion, validateApiKey } from "../monk-api";
 import { detectPi } from "../pi-runner";
 import { logError, logInfo, logSuccess, logWarn, maskKey, printBanner } from "../ui";
-import { MONK_ACCOUNT_URL, MONK_BASE_URL, MONK_WEBSITE, getMonkConfigFile, getPiModelsFile } from "../constants";
+import { MONK_ACCOUNT_URL, MONK_BASE_URL, MONK_OPUS_TOPUP_URL, MONK_WEBSITE, getMonkConfigFile, getPiModelsFile } from "../constants";
 
 export async function statusCommand(): Promise<void> {
   printBanner();
@@ -60,7 +60,25 @@ export async function statusCommand(): Promise<void> {
     return;
   }
 
-  // 4. Live Chat Completion Test
+  // 4. Opus Wallet Signal
+  process.stdout.write(`  ${pc.dim("⏳ 正在接收 Opus 星球的钱包信号...")} `);
+  const wallet = await fetchOpusKeyInfo(key);
+  process.stdout.write("\r" + " ".repeat(50) + "\r");
+  if (!wallet.available) {
+    logInfo(`Opus 钱包: ${pc.dim("信号未到达（不影响订阅模型使用）")}`);
+  } else if (!wallet.hasWallet) {
+    logInfo(
+      `Opus 钱包: ${pc.dim("尚未开通")} · monk-opus 按量付费，充值即用 ${pc.cyan(MONK_OPUS_TOPUP_URL)}`
+    );
+  } else if (wallet.low || wallet.balance <= 0) {
+    logWarn(`Opus 钱包: ${pc.yellow(`余额 ¥${wallet.balance.toFixed(2)}`)} · 偏低，建议充值 ${pc.cyan(MONK_OPUS_TOPUP_URL)}`);
+  } else {
+    logSuccess(
+      `Opus 钱包: 余额 ${pc.green(`¥${wallet.balance.toFixed(2)}`)} · 今日已扣 ¥${wallet.todayCharged.toFixed(4)} · 日限 ¥${wallet.dailyLimit}`
+    );
+  }
+
+  // 5. Live Chat Completion Test
   process.stdout.write(`  ${pc.dim(`⏳ 正在对 ${defaultModel} 发起极简握手推演...`)} `);
   const testRes = await testChatCompletion(key, defaultModel);
 

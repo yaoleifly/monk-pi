@@ -794,6 +794,15 @@ async function handleModelSwitch(pi: ExtensionAPI, ctx: ExtensionCommandContext)
   const success = await pi.setModel(model);
   if (success) {
     ctx.ui.notify(`主力模型已切换至: ${matched.id}`, "info");
+    if (matched.id === "monk-opus") {
+      const apiKey = process.env.MONK_API_KEY || "";
+      const wallet = apiKey ? await fetchOpusWallet(apiKey) : null;
+      if (wallet && !wallet.hasWallet) {
+        ctx.ui.notify("monk-opus 按量付费：还没有 Opus 钱包，先去 https://monk.party/me/#opus 充值", "warning");
+      } else if (wallet && (wallet.low || wallet.balance <= 0)) {
+        ctx.ui.notify(`Opus 钱包余额 ¥${wallet.balance.toFixed(2)}，偏低，建议先充值`, "warning");
+      }
+    }
   } else {
     ctx.ui.notify(`切换失败，未能设置模型: ${matched.id}`, "error");
   }
@@ -828,6 +837,41 @@ async function handlePing(ctx: ExtensionCommandContext) {
       "error"
     );
   }
+}
+
+/** Opus 钱包查询（2026-11-18 key-info 端点）。返回 null 表示信号未到达。 */
+async function fetchOpusWallet(apiKey: string): Promise<{ hasWallet: boolean; balance: number; low: boolean } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch("https://monk.party/monk-api/opus/key-info", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const body = (await res.json().catch(() => ({}))) as { success?: boolean; hasWallet?: boolean; balance?: number; low?: boolean };
+    if (!res.ok || !body.success) return null;
+    return { hasWallet: body.hasWallet === true, balance: Number(body.balance) || 0, low: body.low === true };
+  } catch {
+    return null;
+  }
+}
+
+async function handleAccountInfo(ctx: ExtensionCommandContext) {
+  if (!ctx.ui) return;
+  const apiKey = process.env.MONK_API_KEY || "";
+  const wallet = apiKey ? await fetchOpusWallet(apiKey) : null;
+  const walletLine =
+    wallet == null
+      ? "Opus 钱包: 信号未到达"
+      : !wallet.hasWallet
+        ? "Opus 钱包: 尚未开通（monk-opus 按量付费，充值即用）"
+        : `Opus 钱包: 余额 ¥${wallet.balance.toFixed(2)}${wallet.low ? " · 偏低，建议充值" : ""}`;
+  await ctx.ui.select("账号与钱包", [
+    walletLine,
+    "用量与到期: https://monk.party/account/",
+    "Opus 充值: https://monk.party/me/#opus",
+  ]);
 }
 
 async function handleMenu(
@@ -877,6 +921,6 @@ async function handleMenu(
   } else if (choice.startsWith("7")) {
     await handlePing(ctx);
   } else if (choice.startsWith("8")) {
-    ctx.ui.notify("请在浏览器打开 https://monk.party/account/ 查看用量与剩余天数", "info");
+    await handleAccountInfo(ctx);
   }
 }

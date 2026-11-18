@@ -1,4 +1,70 @@
-import { MONK_BASE_URL } from "./constants";
+import { MONK_BASE_URL, MONK_OPUS_KEYINFO_URL } from "./constants";
+
+export interface OpusKeyInfo {
+  available: boolean;
+  hasWallet: boolean;
+  keyKind?: string;
+  balance: number;
+  todayCharged: number;
+  dailyLimit: number;
+  low: boolean;
+  error?: string;
+}
+
+/**
+ * Fetches the Opus wallet state bound to the key (2026-11-18 endpoint).
+ * Never throws; on network/API failure returns { available: false }.
+ */
+export async function fetchOpusKeyInfo(apiKey: string): Promise<OpusKeyInfo> {
+  const empty: OpusKeyInfo = {
+    available: false,
+    hasWallet: false,
+    balance: 0,
+    todayCharged: 0,
+    dailyLimit: 0,
+    low: false,
+  };
+  const trimmedKey = apiKey.trim();
+  if (!trimmedKey) return { ...empty, error: "API Key 不能为空" };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const response = await fetch(MONK_OPUS_KEYINFO_URL, {
+      headers: {
+        Authorization: `Bearer ${trimmedKey}`,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const body = (await response.json().catch(() => ({}))) as {
+      success?: boolean;
+      hasWallet?: boolean;
+      keyKind?: string;
+      balance?: number;
+      todayCharged?: number;
+      dailyLimit?: number;
+      low?: boolean;
+      error?: string;
+    };
+    if (!response.ok || !body.success) {
+      return { ...empty, error: body.error || `HTTP ${response.status}` };
+    }
+    return {
+      available: true,
+      hasWallet: body.hasWallet === true,
+      keyKind: body.keyKind,
+      balance: Number(body.balance) || 0,
+      todayCharged: Number(body.todayCharged) || 0,
+      dailyLimit: Number(body.dailyLimit) || 0,
+      low: body.low === true,
+    };
+  } catch (err: unknown) {
+    return { ...empty, error: err instanceof Error ? err.message : String(err) };
+  }
+}
 
 export interface ValidateResult {
   valid: boolean;
