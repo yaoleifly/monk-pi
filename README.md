@@ -300,6 +300,14 @@ Monk-Pi 自动为 Pi 部署原生扩展 (`~/.pi/agent/extensions/monk.ts`)：
 - 超长工具历史或过大的 `max_tokens` 偶发上游 400 时，缩短上下文或去掉过大的 `max_tokens`。这类 400 不一定会自动换上游。
 - 仍有问题？去 [monk.party/try/](https://monk.party/try/) 在线自检并一键提交带诊断信息的反馈；或发邮件至 support@monk.party（自动诊断并回邮）；TG 用户可直接找 [@monk_feedback_bot](https://t.me/monk_feedback_bot)。
 
+## 🔗 MONK 宇宙 · 相关项目
+
+- [monk.party](https://monk.party/) — OpenAI 兼容融合 API 总站：[月卡 ¥30/30 天](https://monk.party/) · [Monk Opus](https://monk.party/opus/)（Claude Opus 5.5 按量，约官方价 3 折）· [在线试用](https://monk.party/try/) · [用户中心](https://monk.party/me/)
+- [monk-bar](https://github.com/yaoleifly/monk-bar) — macOS 菜单栏：邮箱验证码登录看全部订阅与 Opus 钱包
+- [monk-harness](https://github.com/yaoleifly/monk-harness) — DeepSeek Harness 发行版，浏览器 Agent 默认走 Monk
+- [homebrew-tap](https://github.com/yaoleifly/homebrew-tap) — `brew install yaoleifly/tap/monk-pi`
+- [帮助中心](https://monk.party/help/) · [接码](https://monk.party/sms/) · [Gemini 激活](https://monk.party/gemini/) · [账号商店](https://monk.party/store/) · [3D 办公室](https://monk.party/office/3d/)
+
 ## 📄 开源许可
 
 MIT License
