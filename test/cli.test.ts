@@ -15,10 +15,13 @@ function runCli(args: string[]) {
   });
 }
 
-test("version flag prints 0.15.0", () => {
+test("version flag prints the package version", () => {
+  const pkg = JSON.parse(
+    spawnSync("cat", [path.join(root, "package.json")], { encoding: "utf-8" }).stdout,
+  );
   const result = runCli(["--version"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /monk-pi v0\.14\.0/);
+  assert.match(result.stdout, new RegExp(`monk-pi v${pkg.version.replace(/\./g, "\\.")}`));
 });
 
 test("help lists the four combos and omits the retired demo", () => {
