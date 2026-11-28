@@ -30,7 +30,6 @@ test("version constant matches package.json", () => {
     version: string;
   };
   assert.equal(pkg.version, MONK_PI_VERSION);
-  assert.equal(pkg.version, "0.15.0");
 });
 
 test("model matching accepts ids and unique suffixes", () => {
